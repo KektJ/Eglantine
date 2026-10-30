@@ -34,6 +34,7 @@
 #include "shader_recompiler/frontend/ampere/program_address_map.h"
 #include "video_core/engines/kepler_compute.h"
 #include "video_core/memory_manager.h"
+#include "video_core/renderer_vulkan/pipeline_stats.h"
 #include "video_core/shader_environment.h"
 #include "video_core/texture_cache/format_lookup_table.h"
 #include "video_core/textures/texture.h"
