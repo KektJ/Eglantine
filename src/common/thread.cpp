@@ -533,7 +533,13 @@ void SetCurrentThreadName(const char* name) {
     // MinGW with the POSIX threading model does not support pthread_setname_np
     // See for reference
     // https://gitlab.freedesktop.org/mesa/mesa/-/blame/main/src/util/u_thread.c?ref_type=heads#L75
-    (void)name;
+    // SetThreadDescription works without it, and profilers can then tell the threads apart.
+    using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
+    if (auto pf = reinterpret_cast<SetThreadDescriptionFn>(reinterpret_cast<void*>(
+            GetProcAddress(GetModuleHandleW(L"KernelBase.dll"), "SetThreadDescription")));
+        pf) {
+        pf(GetCurrentThread(), UTF8ToUTF16W(name).data());
+    }
 #else
     pthread_setname_np(pthread_self(), name);
 #endif
