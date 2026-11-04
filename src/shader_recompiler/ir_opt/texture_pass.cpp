@@ -4,6 +4,7 @@
 // SPDX-FileCopyrightText: Copyright 2021 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
 #include <algorithm>
 #include <queue>
 #include <unordered_map>
@@ -93,6 +94,19 @@ IR::Value ResolveConditionalPhi(IR::Value value, const IR::Block* block) {
 constexpr u32 DESCRIPTOR_SIZE = 8;
 constexpr u32 DESCRIPTOR_SIZE_SHIFT = u32(std::countr_zero(DESCRIPTOR_SIZE));
 constexpr u32 DESCRIPTOR_MAX_COUNT = 1024;
+
+// A dynamically indexed texture array binds every entry on every draw, whatever the shader samples:
+// three arrays of 1024 cost about half of the GPU back thread in Fire Emblem's crowds. An index past
+// the cap samples the last entry. EDEN_NX2_TEXTURE_ARRAY_CAP lowers it.
+u32 DynamicTextureArrayCap() {
+    static const u32 cap = [] {
+        const char* const value = std::getenv("EDEN_NX2_TEXTURE_ARRAY_CAP");
+        const unsigned long parsed = value != nullptr ? std::strtoul(value, nullptr, 10) : 0;
+        return parsed >= 2 && parsed < DESCRIPTOR_MAX_COUNT ? static_cast<u32>(parsed)
+                                                            : DESCRIPTOR_MAX_COUNT;
+    }();
+    return cap;
+}
 
 u32 DynamicDescriptorSizeShift(const IR::U32& dynamic_offset) {
     const IR::Inst* const inst = dynamic_offset.InstRecursive();
@@ -1329,7 +1343,7 @@ void TexturePass(Environment& env, IR::Program& program, const HostTranslateInfo
                     .handle_program = cbuf.handle_program,
                 });
             } else {
-                count = std::min(count, sampled_dynamic_cap);
+                count = std::min({count, sampled_dynamic_cap, DynamicTextureArrayCap()});
                 const bool is_integer{is_texture_pixel_format_integer(cbuf)};
                 index = descriptors.Add(TextureDescriptor{
                     .type = flags.type,
