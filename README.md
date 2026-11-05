@@ -51,13 +51,21 @@ Measured in crowded areas on a Ryzen 7 5800X3D and RTX 4070 Ti at 2x resolution.
 | Crowded town | 17 FPS | at least 26 FPS |
 | Heaviest crowd tested | about 9 FPS | 28-30 FPS |
 
-These come from play testing in a limited part of the game on one PC, so other areas may behave differently.
+These come from play testing in a limited part of the game on one PC, so other areas may behave differently. They were measured on the PGO build.
+
+### Which build to download
+
+| Build | Videos | Notes |
+|---|---|---|
+| **MSVC** | Play normally | The one to choose if you want the game's movies. It hasn't had the same fps comparison |
+| **PGO** (clang, MinGW) | **Don't play.** The screen stays blank and the game skips them | Its FFmpeg package has no AV1 decoder, and this game's movies are AV1. The results above come from this build |
 
 ### What changed
 
 - **Texture array limit setting:** shaders that pick a texture at runtime made the emulator bind up to 1024 textures per array on every draw. In these crowds, that was nearly half of the GPU back thread's busy time. A lower limit skips most of that work.
 - **Run ahead of the GPU setting:** adds a **Relaxed** mode, which lets the game prepare its next frame while the GPU threads finish the current one, without the extra wait in the existing run-ahead mode.
 - **Storage buffer sizing:** upstream sized every native compute storage buffer from its mapping, up to 8 MiB, which caused flickering lines on the world map and a slower title screen in this game. This fork uses upstream's narrower version from [#561](https://github.com/Djihads80/Eglantine/pull/561), limited to DLSS passes. Upstream later reverted that change in [#569](https://github.com/Djihads80/Eglantine/pull/569) without giving a reason, so it may affect other games.
+- **Fire Emblem: Fortune's Weave 60 FPS setting:** keeps the game's own frame rate target at 60, which reached 43-46 FPS in the heaviest crowd tested and looked like normal speed. This hasn't been timed, and the game may run slower wherever it can't hold 60 FPS. It only works on the game version with build ID `DB93B0125F485060`.
 - **Thread names on MinGW builds:** profilers and debuggers can now tell the emulator's threads apart.
 
 ### Using the settings
@@ -68,6 +76,7 @@ Both settings are on the advanced graphics tab and can be set per game. They are
 |---|---|---|
 | Texture array limit | 64 | Wrong textures: raise it to 128 or 256 |
 | Run ahead of the GPU | Relaxed | Freezes, crashes or rubberbanding: use **Previous frame** or **Auto** |
+| Fire Emblem: Fortune's Weave: 60 FPS (optional) | On | Slow motion: turn it off or lower the resolution. Don't use `EDEN_NX2_SWAP_INTERVAL` with it, or the game runs too fast |
 
 Keep a backup save when using **Relaxed**. Running ahead can make a game overwrite data the GPU still needs, and upstream has seen freezes and crashes from this in other games. Neither setting has been tested with other games, so set them per game rather than globally.
 
@@ -78,6 +87,12 @@ The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP` and `EDEN_NX2_FRAMES_AHEA
 - Short hitches can still happen, with the worst single frames taking up to about 0.8 seconds.
 - A torch's light in one cave disappears at a certain distance. This may be an older bug, but that hasn't been confirmed.
 - Settings of 64 and Relaxed have only been tested in the parts of the game played so far.
+- Videos don't play on the PGO build. Use the MSVC build if you want to see them.
+- Real NVIDIA DLSS is optional and off by default. It needs NVIDIA's Streamline, which the Graphics tab can download. Without it, the game uses its own DLSS network at 1x and FSR 3.1 at higher resolutions.
+
+### Credits
+
+The 60 FPS setting relies on the frame rate target's location and behavior as documented by [seedds/nxnative](https://github.com/seedds/nxnative) and [weile10000/FEFW-60fps](https://github.com/weile10000/FEFW-60fps). The setting is this fork's own implementation and doesn't use their files or cheat code. Please don't report problems with it to them.
 
 ## Compatibility
 
