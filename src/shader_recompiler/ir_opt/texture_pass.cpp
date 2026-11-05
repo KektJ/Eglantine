@@ -97,15 +97,15 @@ constexpr u32 DESCRIPTOR_MAX_COUNT = 1024;
 
 // A dynamically indexed texture array binds every entry on every draw, whatever the shader samples:
 // three arrays of 1024 cost about half of the GPU back thread in Fire Emblem's crowds. An index past
-// the cap samples the last entry. EDEN_NX2_TEXTURE_ARRAY_CAP lowers it.
-u32 DynamicTextureArrayCap() {
-    static const u32 cap = [] {
+// the cap samples the last entry. The texture_array_limit setting lowers it, and
+// EDEN_NX2_TEXTURE_ARRAY_CAP overrides that setting.
+u32 DynamicTextureArrayCap(const HostTranslateInfo& host_info) {
+    static const u32 override_cap = [] {
         const char* const value = std::getenv("EDEN_NX2_TEXTURE_ARRAY_CAP");
-        const unsigned long parsed = value != nullptr ? std::strtoul(value, nullptr, 10) : 0;
-        return parsed >= 2 && parsed < DESCRIPTOR_MAX_COUNT ? static_cast<u32>(parsed)
-                                                            : DESCRIPTOR_MAX_COUNT;
+        return value != nullptr ? static_cast<u32>(std::strtoul(value, nullptr, 10)) : 0U;
     }();
-    return cap;
+    const u32 cap = override_cap != 0 ? override_cap : host_info.max_dynamic_texture_array;
+    return cap >= 2 && cap < DESCRIPTOR_MAX_COUNT ? cap : DESCRIPTOR_MAX_COUNT;
 }
 
 u32 DynamicDescriptorSizeShift(const IR::U32& dynamic_offset) {
@@ -1343,7 +1343,7 @@ void TexturePass(Environment& env, IR::Program& program, const HostTranslateInfo
                     .handle_program = cbuf.handle_program,
                 });
             } else {
-                count = std::min({count, sampled_dynamic_cap, DynamicTextureArrayCap()});
+                count = std::min({count, sampled_dynamic_cap, DynamicTextureArrayCap(host_info)});
                 const bool is_integer{is_texture_pixel_format_integer(cbuf)};
                 index = descriptors.Add(TextureDescriptor{
                     .type = flags.type,

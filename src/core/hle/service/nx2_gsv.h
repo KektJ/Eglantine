@@ -1735,7 +1735,8 @@ private:
         // previous frame's fence instead and let the game prepare frame N+1 meanwhile (waiting
         // for this frame there cost 8-56 ms of every 34-105 ms frame, or never finished).
         // EDEN_NX2_FRAMES_AHEAD=1 always waits for the previous frame, =0 always for this one,
-        // =2 like =1 but without also waiting for this frame while the GPU is behind.
+        // =2 like =1 but without also waiting for this frame while the GPU is behind. Set, it
+        // overrides the frames_ahead_mode setting.
         static const int frames_ahead_setting = [] {
             const char* value = std::getenv("EDEN_NX2_FRAMES_AHEAD");
             return value == nullptr ? -1 : value[0] == '2' ? 2 : value[0] == '1' ? 1 : 0;
@@ -1745,6 +1746,21 @@ private:
         // a freeze or crash; rubberbanding while moving). Title 1 runs ahead without either.
         constexpr u64 DonkeyKongBananzaProgramId = 0x040074A01BF12000ULL;
         int frames_ahead = frames_ahead_setting;
+        if (frames_ahead == -1) {
+            switch (Settings::values.frames_ahead_mode.GetValue()) {
+            case Settings::FramesAheadMode::ThisFrame:
+                frames_ahead = 0;
+                break;
+            case Settings::FramesAheadMode::PreviousFrame:
+                frames_ahead = 1;
+                break;
+            case Settings::FramesAheadMode::Relaxed:
+                frames_ahead = 2;
+                break;
+            default:
+                break;
+            }
+        }
         if (frames_ahead == -1 &&
             system.GetApplicationProcessProgramID() == DonkeyKongBananzaProgramId) {
             frames_ahead = 0;

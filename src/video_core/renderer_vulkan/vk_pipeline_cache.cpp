@@ -515,6 +515,18 @@ PipelineCache::PipelineCache(Tegra::MaxwellDeviceMemoryManager& device_memory_,
         .min_ssbo_alignment = device.GetStorageBufferAlignment(),
         .max_per_stage_descriptor_sampled_images = device.GetMaxPerStageDescriptorSampledImages(),
         .max_per_stage_resources = device.GetMaxPerStageResources(),
+        .max_dynamic_texture_array = [] {
+            switch (Settings::values.texture_array_limit.GetValue()) {
+            case Settings::TextureArrayLimit::Limit_64:
+                return 64U;
+            case Settings::TextureArrayLimit::Limit_128:
+                return 128U;
+            case Settings::TextureArrayLimit::Limit_256:
+                return 256U;
+            default:
+                return 0U;
+            }
+        }(),
         .max_descriptor_set_samplers = device.GetMaxDescriptorSetSamplers(),
         .max_descriptor_set_uniform_buffers = device.GetMaxDescriptorSetUniformBuffers(),
         .max_descriptor_set_uniform_buffers_dynamic = device.GetMaxDescriptorSetUniformBuffersDynamic(),

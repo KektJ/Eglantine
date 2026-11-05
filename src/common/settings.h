@@ -612,6 +612,27 @@ struct Values {
     SwitchableSetting<bool> mkw_dynamic_fps{linkage, false, "mkw_dynamic_fps",
                                             Category::RendererAdvanced};
 
+    // Fewer textures bound per dynamically indexed array (texture_pass.cpp).
+    SwitchableSetting<TextureArrayLimit, true> texture_array_limit{linkage,
+                                                                   TextureArrayLimit::Limit_1024,
+                                                                   TextureArrayLimit::Limit_1024,
+                                                                   TextureArrayLimit::Limit_64,
+                                                                   "texture_array_limit",
+                                                                   Category::RendererAdvanced,
+                                                                   Specialization::Default,
+                                                                   true,
+                                                                   false};
+    // Which frame a Switch 2 game's present waits for (nx2_gsv.h).
+    SwitchableSetting<FramesAheadMode, true> frames_ahead_mode{linkage,
+                                                               FramesAheadMode::Auto,
+                                                               FramesAheadMode::Auto,
+                                                               FramesAheadMode::Relaxed,
+                                                               "frames_ahead_mode",
+                                                               Category::RendererAdvanced,
+                                                               Specialization::Default,
+                                                               true,
+                                                               false};
+
     SwitchableSetting<bool> use_reactive_flushing{linkage,
 #ifdef __ANDROID__
                                                   false,

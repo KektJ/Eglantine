@@ -287,6 +287,18 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
            tr("Lets the game adjust between 30 and 60 FPS using whole-frame timing to maintain "
               "normal game speed. Takes effect after restarting the game and takes precedence over "
               "the 30 FPS mode."));
+    INSERT(Settings, texture_array_limit, tr("Texture array limit (experimental)"),
+           tr("Limits how many textures each dynamically indexed texture array binds on every "
+              "draw. Lower limits can greatly raise the frame rate in games whose draws use these "
+              "arrays.\nA limit that is too low shows wrong textures: raise it if that happens.\n"
+              "Takes effect when a game starts."));
+    INSERT(Settings, frames_ahead_mode, tr("Run ahead of the GPU (experimental)"),
+           tr("Lets a Switch 2 game prepare its next frame while the GPU threads finish this one, "
+              "which can raise the frame rate.\nSome games overwrite data the GPU still needs when "
+              "they run ahead, which can cause freezes, crashes or rubberbanding, so keep a backup "
+              "save.\nAuto: the emulator decides for each frame.\nThis frame: never run ahead.\n"
+              "Previous frame: run ahead while the GPU keeps up.\nRelaxed: always run ahead by up "
+              "to a frame, the fastest and riskiest."));
     INSERT(Settings, barrier_feedback_loops, tr("Barrier feedback loops"),
            tr("Improves rendering of transparency effects in specific games."));
     INSERT(Settings, enable_buffer_history, tr("Enable buffer history"),
@@ -423,6 +435,20 @@ std::unique_ptr<ComboboxTranslationMap> ComboboxEnumeration(QObject* parent) {
                               PAIR(FramePacingMode, Target_60, tr("60 FPS")),
                               PAIR(FramePacingMode, Target_90, tr("90 FPS")),
                               PAIR(FramePacingMode, Target_120, tr("120 FPS")),
+                          }});
+    translations->insert({Settings::EnumMetadata<Settings::TextureArrayLimit>::Index(),
+                          {
+                              PAIR(TextureArrayLimit, Limit_1024, tr("Off (1024)")),
+                              PAIR(TextureArrayLimit, Limit_256, tr("256")),
+                              PAIR(TextureArrayLimit, Limit_128, tr("128")),
+                              PAIR(TextureArrayLimit, Limit_64, tr("64")),
+                          }});
+    translations->insert({Settings::EnumMetadata<Settings::FramesAheadMode>::Index(),
+                          {
+                              PAIR(FramesAheadMode, Auto, tr("Auto")),
+                              PAIR(FramesAheadMode, ThisFrame, tr("This frame")),
+                              PAIR(FramesAheadMode, PreviousFrame, tr("Previous frame")),
+                              PAIR(FramesAheadMode, Relaxed, tr("Relaxed")),
                           }});
     translations->insert({Settings::EnumMetadata<Settings::VramUsageMode>::Index(),
                           {
