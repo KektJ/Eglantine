@@ -318,6 +318,21 @@ std::optional<VAddr> AppLoader_NSO::LoadModule(Kernel::KProcess& process, Core::
     if (name == "main" && process.GetProgramId() == Settings::MarioKartWorldProgramId) {
         process.SetMkwDynamicFpsPatchApplied(mkw_dynamic_fps_patch_applied);
     }
+    // Where Fortune's Weave keeps the pointer to its graphics state. This offset belongs to this
+    // build only; the nx2:vi2 presents write the frame rate target through it.
+    if (name == "main" && process.GetProgramId() == Settings::FortunesWeaveProgramId &&
+        Settings::values.fortunes_weave_60fps.GetValue()) {
+        constexpr std::array<u8, 8> SupportedBuildId{0xDB, 0x93, 0xB0, 0x12, 0x5F, 0x48, 0x50, 0x60};
+        constexpr u64 GraphicsStatePointerOffset = 0x21E60D8;
+        if (std::equal(SupportedBuildId.begin(), SupportedBuildId.end(),
+                       nso_header.build_id.begin())) {
+            process.SetFortunesWeaveStatePointer(load_base + GraphicsStatePointerOffset);
+            LOG_INFO(Loader, "Fire Emblem: Fortune's Weave: 60 FPS target enabled");
+        } else {
+            LOG_WARNING(Loader, "Fire Emblem: Fortune's Weave 60 FPS skipped: unsupported build {}",
+                        Common::HexToString(nso_header.build_id));
+        }
+    }
     return load_base + image_size;
 }
 

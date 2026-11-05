@@ -1792,6 +1792,7 @@ private:
         const auto waited = std::chrono::steady_clock::now();
         Composite(w[5], ~w[22], w[24], w[7]);
         const auto composited = std::chrono::steady_clock::now();
+        ApplyFortunesWeaveFrameTarget();
         PaceToVblank(w[12]);
         const auto paced = std::chrono::steady_clock::now();
         // Where each frame's time goes on the present thread, averaged per 600 presents: the
@@ -1858,6 +1859,35 @@ private:
     // timing: present word 12, (swap interval << 16) | refresh rate. Fire Emblem: Fortune's Weave
     // sends 0x1003c during its boot logos and 0x2003c (two vblanks per frame, 30 fps) after; paced
     // at every vblank it ran at double speed. EDEN_NX2_SWAP_INTERVAL=<n> forces the interval.
+    // Fortune's Weave asks for 60 FPS in menus and 30 in gameplay through a field of its graphics
+    // state, and scales its logic step by 60 / target, so keeping the field at 60 runs gameplay at
+    // 60 FPS without speeding it up. The location and behavior were documented by seedds/nxnative
+    // and weile10000/FEFW-60fps.
+    void ApplyFortunesWeaveFrameTarget() {
+        // This runs on a service thread, whose current process isn't the game.
+        auto* const process = system.ApplicationProcess();
+        if (process == nullptr) {
+            return;
+        }
+        const u64 state_pointer = process->GetFortunesWeaveStatePointer();
+        if (state_pointer == 0) {
+            return;
+        }
+        auto& memory = process->GetMemory();
+        if (!memory.IsValidVirtualAddress(state_pointer)) {
+            return;
+        }
+        constexpr u64 FrameTargetOffset = 0x1DC;
+        const u64 state = memory.Read64(state_pointer);
+        if (state == 0 || !memory.IsValidVirtualAddress(state + FrameTargetOffset)) {
+            return;
+        }
+        constexpr u32 FrameTarget = 60;
+        if (memory.Read32(state + FrameTargetOffset) != FrameTarget) {
+            memory.Write32(state + FrameTargetOffset, FrameTarget);
+        }
+    }
+
     void PaceToVblank(u32 timing) {
         if (!Settings::values.use_speed_limit.GetValue() || Settings::SpeedLimit() == 0) {
             return;

@@ -121,6 +121,7 @@ private:
 
     std::atomic<s64> m_cpu_time{};
     std::atomic_bool m_mkw_dynamic_fps_patch_applied{};
+    std::atomic<u64> m_fortunes_weave_state_pointer{};
     std::atomic<s64> m_num_process_switches{};
     std::atomic<s64> m_num_thread_switches{};
     std::atomic<s64> m_num_fpu_switches{};
@@ -190,6 +191,15 @@ public:
 
     void SetMkwDynamicFpsPatchApplied(bool applied) {
         m_mkw_dynamic_fps_patch_applied.store(applied, std::memory_order_relaxed);
+    }
+
+    /// Address of Fire Emblem: Fortune's Weave's graphics state pointer, 0 when not in use.
+    u64 GetFortunesWeaveStatePointer() const {
+        return m_fortunes_weave_state_pointer.load(std::memory_order_relaxed);
+    }
+
+    void SetFortunesWeaveStatePointer(u64 address) {
+        m_fortunes_weave_state_pointer.store(address, std::memory_order_relaxed);
     }
 
     u64 GetProcessId() const {

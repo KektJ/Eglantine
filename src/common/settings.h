@@ -612,6 +612,10 @@ struct Values {
     SwitchableSetting<bool> mkw_dynamic_fps{linkage, false, "mkw_dynamic_fps",
                                             Category::RendererAdvanced};
 
+    // Fire Emblem: Fortune's Weave: 60 FPS through the game's own frame rate target (loader/nso.cpp).
+    SwitchableSetting<bool> fortunes_weave_60fps{linkage, false, "fortunes_weave_60fps",
+                                                 Category::RendererAdvanced};
+
     // Fewer textures bound per dynamically indexed array (texture_pass.cpp).
     SwitchableSetting<TextureArrayLimit, true> texture_array_limit{linkage,
                                                                    TextureArrayLimit::Limit_1024,

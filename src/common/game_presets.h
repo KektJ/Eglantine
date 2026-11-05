@@ -7,6 +7,7 @@
 namespace Settings {
 
 inline constexpr u64 MarioKartWorldProgramId = 0x0400C3F00006E000ULL;
+inline constexpr u64 FortunesWeaveProgramId = 0x04007EF01F8AE000ULL;
 
 inline void SetMarioKartWorldRecommendedSettings(Values& settings, bool global) {
     const auto session = [global](auto& setting, auto value) {
