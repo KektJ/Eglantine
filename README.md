@@ -29,6 +29,7 @@ It's written in C++ with portability in mind, with builds for Windows, Linux and
 </p>
 
 <p align="center">
+  <a href="#about-this-fork">About this fork</a> |
   <a href="#compatibility">Compatibility</a> |
   <a href="#development">Development</a> |
   <a href="#building">Building</a> |
@@ -36,6 +37,47 @@ It's written in C++ with portability in mind, with builds for Windows, Linux and
   <a href="#support">Support</a> |
   <a href="#license">License</a>
 </p>
+
+## About this fork
+
+This is an unofficial fork of [Eglantine](https://github.com/Djihads80/Eglantine), aimed at raising the frame rate in crowded areas of Fire Emblem: Fortune's Weave. The work is on the `perf/crowded-areas` branch. Please report problems caused by these changes here, not upstream.
+
+### Results
+
+Measured in crowded areas on a Ryzen 7 5800X3D and RTX 4070 Ti at 2x resolution. The game targets 30 FPS.
+
+| Area | Before | With both settings below |
+|---|---|---|
+| Crowded town | 17 FPS | at least 26 FPS |
+| Heaviest crowd tested | about 9 FPS | 28-30 FPS |
+
+These come from play testing in a limited part of the game on one PC, so other areas may behave differently.
+
+### What changed
+
+- **Texture array limit setting:** shaders that pick a texture at runtime made the emulator bind up to 1024 textures per array on every draw. In these crowds, that was nearly half of the GPU back thread's busy time. A lower limit skips most of that work.
+- **Run ahead of the GPU setting:** adds a **Relaxed** mode, which lets the game prepare its next frame while the GPU threads finish the current one, without the extra wait in the existing run-ahead mode.
+- **Storage buffer sizing:** upstream sized every native compute storage buffer from its mapping, up to 8 MiB, which caused flickering lines on the world map and a slower title screen in this game. This fork uses upstream's narrower version from [#561](https://github.com/Djihads80/Eglantine/pull/561), limited to DLSS passes. Upstream later reverted that change in [#569](https://github.com/Djihads80/Eglantine/pull/569) without giving a reason, so it may affect other games.
+- **Thread names on MinGW builds:** profilers and debuggers can now tell the emulator's threads apart.
+
+### Using the settings
+
+Both settings are on the advanced graphics tab and can be set per game. They are off by default, so the emulator behaves normally until you change them. For Fortune's Weave, set:
+
+| Setting | Value | If something goes wrong |
+|---|---|---|
+| Texture array limit | 64 | Wrong textures: raise it to 128 or 256 |
+| Run ahead of the GPU | Relaxed | Freezes, crashes or rubberbanding: use **Previous frame** or **Auto** |
+
+Keep a backup save when using **Relaxed**. Running ahead can make a game overwrite data the GPU still needs, and upstream has seen freezes and crashes from this in other games. Neither setting has been tested with other games, so set them per game rather than globally.
+
+The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP` and `EDEN_NX2_FRAMES_AHEAD` override these settings when set.
+
+### Known issues
+
+- Short hitches can still happen, with the worst single frames taking up to about 0.8 seconds.
+- A torch's light in one cave disappears at a certain distance. This may be an older bug, but that hasn't been confirmed.
+- Settings of 64 and Relaxed have only been tested in the parts of the game played so far.
 
 ## Compatibility
 
