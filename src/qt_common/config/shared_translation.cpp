@@ -293,6 +293,13 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
               "the game version it was made for; other versions ignore it. Leave "
               "EDEN_NX2_SWAP_INTERVAL unset, or the game runs too fast.\nTakes effect after "
               "restarting the game."));
+    INSERT(Settings, fortunes_weave_recommended_settings,
+           tr("Use recommended settings for Fire Emblem: Fortune's Weave"),
+           tr("When Fortune's Weave starts, uses this build's recommended GPU accuracy (Fast), "
+              "texture array limit (64), run-ahead (Relaxed), uniform buffer and texture handle "
+              "settings for any of them you haven't changed yourself, globally or for the game.\n"
+              "Turn this off to use the "
+              "emulator's defaults instead."));
     INSERT(Settings, texture_array_limit, tr("Texture array limit (experimental)"),
            tr("Limits how many textures each dynamically indexed texture array binds on every "
               "draw. Lower limits can greatly raise the frame rate in games whose draws use these "

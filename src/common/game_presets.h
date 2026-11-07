@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "common/settings.h"
 
 namespace Settings {
@@ -33,6 +35,32 @@ inline bool ApplyMarioKartWorldPreset(Values& settings, u64 program_id, bool acc
     }
     SetMarioKartWorldRecommendedSettings(settings, false);
     return true;
+}
+
+/// Fortune's Weave's recommended values for this fork's settings, applied for the session when it
+/// boots (yuzu/main_window.cpp). Only settings the user hasn't chosen are changed: no per-game
+/// value, and the global value still at its default. Returns the names of the settings it set.
+inline std::vector<const char*> ApplyFortunesWeaveRecommendedSettings(Values& settings,
+                                                                      u64 program_id) {
+    std::vector<const char*> applied;
+    if (program_id != FortunesWeaveProgramId ||
+        !settings.fortunes_weave_recommended_settings.GetValue()) {
+        return applied;
+    }
+    const auto recommend = [&applied](auto& setting, auto value, const char* name) {
+        if (!setting.UsingGlobal() || setting.GetValue(true) != setting.GetDefault()) {
+            return; // The user chose a value, per game or globally
+        }
+        setting.SetGlobal(false);
+        setting.SetValue(value);
+        applied.push_back(name);
+    };
+    recommend(settings.gpu_accuracy, GpuAccuracy::Low, "gpu_accuracy");
+    recommend(settings.texture_array_limit, TextureArrayLimit::Limit_64, "texture_array_limit");
+    recommend(settings.frames_ahead_mode, FramesAheadMode::Relaxed, "frames_ahead_mode");
+    recommend(settings.uniform_inplace_compare, true, "uniform_inplace_compare");
+    recommend(settings.handle_pointer_cache, true, "handle_pointer_cache");
+    return applied;
 }
 
 } // namespace Settings

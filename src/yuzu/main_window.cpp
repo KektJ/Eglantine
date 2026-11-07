@@ -10,6 +10,8 @@
 
 #include <boost/algorithm/string/split.hpp>
 #include "common/fs/path_util.h"
+#include <fmt/ranges.h>
+
 #include "common/game_presets.h"
 #include "common/settings.h"
 #include "common/settings_enums.h"
@@ -1988,6 +1990,14 @@ void MainWindow::BootGame(const QString& filename, Service::AM::FrontendAppletPa
         QtCommon::system->ApplySettings();
         Settings::UpdateGPUAccuracy();
         LOG_INFO(Config, "Applied recommended MKW settings after per-game configuration");
+    }
+    if (const auto applied =
+            Settings::ApplyFortunesWeaveRecommendedSettings(Settings::values, title_id);
+        !applied.empty()) {
+        QtCommon::system->ApplySettings();
+        Settings::UpdateGPUAccuracy();
+        LOG_INFO(Config, "Applied recommended Fortune's Weave settings: {}",
+                 fmt::join(applied, ", "));
     }
     Settings::LogSettings();
 

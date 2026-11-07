@@ -109,3 +109,38 @@ TEST_CASE("Declining the MKW preset preserves global and per-game preferences", 
         CHECK(settings->resolution_setup.UsingGlobal() == !per_game);
     }
 }
+
+TEST_CASE("Fortune's Weave preset sets only settings the user hasn't chosen", "[game_presets]") {
+    auto settings = std::make_unique<Settings::Values>();
+    // Global choice: kept.
+    settings->frames_ahead_mode.SetGlobal(true);
+    settings->frames_ahead_mode.SetValue(Settings::FramesAheadMode::PreviousFrame);
+    // Per-game choice: kept.
+    settings->handle_pointer_cache.SetGlobal(false);
+    settings->handle_pointer_cache.SetValue(false);
+
+    const auto applied = Settings::ApplyFortunesWeaveRecommendedSettings(
+        *settings, Settings::FortunesWeaveProgramId);
+    CHECK(applied.size() == 2);
+    CHECK(settings->texture_array_limit.GetValue() == Settings::TextureArrayLimit::Limit_64);
+    CHECK(settings->uniform_inplace_compare.GetValue());
+    CHECK(settings->frames_ahead_mode.GetValue() == Settings::FramesAheadMode::PreviousFrame);
+    CHECK_FALSE(settings->handle_pointer_cache.GetValue());
+
+    for (const auto& restore : settings->linkage.restore_functions) {
+        restore();
+    }
+    CHECK(settings->texture_array_limit.GetValue() == Settings::TextureArrayLimit::Limit_1024);
+    CHECK_FALSE(settings->uniform_inplace_compare.GetValue());
+}
+
+TEST_CASE("Fortune's Weave preset can be turned off and ignores other games", "[game_presets]") {
+    auto settings = std::make_unique<Settings::Values>();
+    CHECK(Settings::ApplyFortunesWeaveRecommendedSettings(*settings, 0).empty());
+    CHECK(settings->texture_array_limit.UsingGlobal());
+    settings->fortunes_weave_recommended_settings.SetValue(false);
+    CHECK(Settings::ApplyFortunesWeaveRecommendedSettings(*settings,
+                                                          Settings::FortunesWeaveProgramId)
+              .empty());
+    CHECK(settings->texture_array_limit.UsingGlobal());
+}

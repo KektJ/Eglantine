@@ -616,6 +616,11 @@ struct Values {
     SwitchableSetting<bool> fortunes_weave_60fps{linkage, false, "fortunes_weave_60fps",
                                                  Category::RendererAdvanced};
 
+    // When Fortune's Weave boots, sets this fork's recommended values for the settings below that
+    // the user hasn't chosen (common/game_presets.h).
+    Setting<bool> fortunes_weave_recommended_settings{linkage, true,
+                                                      "fortunes_weave_recommended_settings",
+                                                      Category::RendererAdvanced};
     // Fewer textures bound per dynamically indexed array (texture_pass.cpp).
     SwitchableSetting<TextureArrayLimit, true> texture_array_limit{linkage,
                                                                    TextureArrayLimit::Limit_1024,
