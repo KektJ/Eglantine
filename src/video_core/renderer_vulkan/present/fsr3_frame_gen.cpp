@@ -300,7 +300,8 @@ void Fsr3FrameGen::Process(const Device& device, Scheduler& scheduler, VkImage c
         image_infos.reserve(4);
         std::vector<VkWriteDescriptorSet> updates{
             CreateWriteDescriptorSet(image_infos, *m_linear_sampler, current_view, m_flow_desc_sets[0], 0),
-            CreateWriteDescriptorSet(image_infos, *m_linear_sampler, *m_history_view, m_flow_desc_sets[0], 1),
+            // The previous real frame: m_current still holds it until this frame's copies below.
+            CreateWriteDescriptorSet(image_infos, *m_linear_sampler, *m_current_view, m_flow_desc_sets[0], 1),
         };
 
         const VkDescriptorImageInfo motion_store_info{
@@ -344,8 +345,11 @@ void Fsr3FrameGen::Process(const Device& device, Scheduler& scheduler, VkImage c
         // Motion vectors: GENERAL ΓåÆ SHADER_READ_ONLY
         BarrierComputeWriteToRead(cmdbuf, *m_motion_image);
 
-        // Batched dual-copy: source ΓåÆ history + current (3 barriers instead of 6)
-        CopyImageToTwo(cmdbuf, current_frame, *m_history_image, *m_current_image, m_extent);
+        // Generate interpolates between m_history (the previous real frame) and m_current (this
+        // one). Copying this frame into both, as before, made them equal, so every generated
+        // frame was a copy of the next real one: the previous frame moves to m_history first.
+        CopyImageToImage(cmdbuf, *m_current_image, *m_history_image, m_extent);
+        CopyImageToImage(cmdbuf, current_frame, *m_current_image, m_extent);
     });
 
     m_flow_valid = true;
