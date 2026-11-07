@@ -12,6 +12,7 @@
 #include "common/alignment.h"
 #include "common/assert.h"
 #include "common/logging.h"
+#include "common/settings.h"
 #include "core/core.h"
 #include "core/hle/kernel/k_page_table.h"
 #include "core/hle/kernel/k_process.h"
@@ -345,11 +346,12 @@ const u8* MemoryManager::GetPointer(GPUVAddr gpu_addr) const {
 }
 
 bool MemoryManager::HandlePointerCacheEnabled() {
-    static const bool enabled = [] {
+    // EDEN_NX2_HANDLE_PTR_CACHE when set, else the handle_pointer_cache setting.
+    static const int forced = [] {
         const char* value = std::getenv("EDEN_NX2_HANDLE_PTR_CACHE");
-        return value != nullptr && value[0] != '0';
+        return value == nullptr ? -1 : value[0] != '0' ? 1 : 0;
     }();
-    return enabled;
+    return forced >= 0 ? forced == 1 : Settings::values.handle_pointer_cache.GetValue();
 }
 
 namespace {

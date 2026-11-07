@@ -626,6 +626,12 @@ struct Values {
                                                                    Specialization::Default,
                                                                    true,
                                                                    false};
+    // GPU back thread work from Lichii, both read on every draw (uniform_stream_reuse.h,
+    // memory_manager.cpp). EDEN_NX2_UBO_INPLACE and EDEN_NX2_HANDLE_PTR_CACHE override them.
+    SwitchableSetting<bool> uniform_inplace_compare{linkage, false, "uniform_inplace_compare",
+                                                    Category::RendererAdvanced};
+    SwitchableSetting<bool> handle_pointer_cache{linkage, false, "handle_pointer_cache",
+                                                 Category::RendererAdvanced};
     // Which frame a Switch 2 game's present waits for (nx2_gsv.h).
     SwitchableSetting<FramesAheadMode, true> frames_ahead_mode{linkage,
                                                                FramesAheadMode::Auto,

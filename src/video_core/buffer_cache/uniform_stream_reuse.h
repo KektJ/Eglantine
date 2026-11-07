@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #include "common/common_types.h"
+#include "common/settings.h"
 #include "video_core/nx2_profile.h"
 
 namespace VideoCommon {
@@ -41,17 +42,17 @@ concept StreamUniformReusable = requires(R& runtime, u32 size) {
     return enabled;
 }
 
-/// EDEN_NX2_UBO_INPLACE=1 (default off): BindSmallUniformReusing compares a buffer whose device
+/// EDEN_NX2_UBO_INPLACE=1, or the uniform_inplace_compare setting: BindSmallUniformReusing compares a buffer whose device
 /// pages are one host run (always so within one 4 KiB page) with its slot's bytes straight in
 /// guest memory, instead of copying it into a scratch buffer first. Unchanged bytes are then not
 /// copied at all; changed ones are copied once into the slot and the stream copy is made from the
 /// slot, so the two never differ (as the scratch snapshot guaranteed before).
 [[nodiscard]] inline bool UniformInPlaceCompareEnabled() noexcept {
-    static const bool enabled = [] {
+    static const int forced = [] {
         const char* const value = std::getenv("EDEN_NX2_UBO_INPLACE");
-        return value != nullptr && value[0] != '0';
+        return value == nullptr ? -1 : value[0] != '0' ? 1 : 0;
     }();
-    return enabled;
+    return forced >= 0 ? forced == 1 : Settings::values.uniform_inplace_compare.GetValue();
 }
 
 template <class Ref>
