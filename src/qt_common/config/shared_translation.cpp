@@ -305,6 +305,14 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
               "save.\nAuto: the emulator decides for each frame.\nThis frame: never run ahead.\n"
               "Previous frame: run ahead while the GPU keeps up.\nRelaxed: always run ahead by up "
               "to a frame, the fastest and riskiest."));
+    INSERT(Settings, uniform_inplace_compare, tr("Compare uniform buffers in place (experimental)"),
+           tr("Checks small uniform buffers for changes straight in game memory, so ones that "
+              "didn't change since the last draw aren't copied again.\nCan raise the frame rate "
+              "in scenes with many draws. Turn it off if you see wrong colours or flickering."));
+    INSERT(Settings, handle_pointer_cache, tr("Cache texture handle lookups (experimental)"),
+           tr("Remembers where the texture handles read on every draw live in memory, instead of "
+              "looking each one up again.\nCan raise the frame rate in scenes with many draws. "
+              "Turn it off if you see wrong textures."));
     INSERT(Settings, barrier_feedback_loops, tr("Barrier feedback loops"),
            tr("Improves rendering of transparency effects in specific games."));
     INSERT(Settings, enable_buffer_history, tr("Enable buffer history"),
