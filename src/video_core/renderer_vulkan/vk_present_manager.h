@@ -7,6 +7,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <boost/container/deque.hpp>
@@ -38,6 +39,9 @@ struct Frame {
     vk::Semaphore render_ready;
     vk::Fence present_done;
     bool storage_capable{};
+    /// Frame generation: the present thread holds the frame until then, so generated frames
+    /// and the real one after them are spread across the real frame interval.
+    std::chrono::steady_clock::time_point present_not_before{};
 };
 
 class PresentManager {

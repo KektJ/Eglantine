@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <variant>
@@ -106,6 +107,10 @@ private:
     RasterizerVulkan rasterizer;
 #ifdef HAS_LSFG
     FrameGen frame_gen;
+    /// Frame generation pacing (Composite): when the last composite ran, and the smoothed time
+    /// between composites in seconds.
+    std::chrono::steady_clock::time_point last_composite_time{};
+    double smoothed_composite_interval{};
 #endif
     std::optional<TurboMode> turbo_mode;
 

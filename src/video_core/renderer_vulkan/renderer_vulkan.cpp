@@ -234,13 +234,38 @@ void RendererVulkan::Composite(std::span<const Tegra::FramebufferConfig> framebu
                       GuestExtent(framebuffers));
 
     const size_t generated_frames = frame_gen.GeneratedFrameCount();
+
+    // Pace generated frames: generated frame g of n goes out g/(n+1) of a real frame interval
+    // after this composite and the real frame n/(n+1) after it, instead of all at once. Sent
+    // together, a monitor faster than (n+1) times the game's rate showed each generated frame
+    // for one refresh just before the real one, which looked like no frame generation at all.
+    using PaceClock = std::chrono::steady_clock;
+    const auto composite_time = PaceClock::now();
+    const auto since_last = composite_time - last_composite_time;
+    last_composite_time = composite_time;
+    if (since_last < std::chrono::milliseconds{100}) {
+        const double seconds = std::chrono::duration<double>(since_last).count();
+        smoothed_composite_interval = smoothed_composite_interval > 0.0
+            ? smoothed_composite_interval + (seconds - smoothed_composite_interval) * 0.1
+            : seconds;
+    }
+    const auto present_offset = [&](size_t slot) {
+        if (generated_frames == 0 || smoothed_composite_interval <= 0.0) {
+            return PaceClock::time_point{};
+        }
+        const double fraction = static_cast<double>(slot) / static_cast<double>(generated_frames + 1);
+        return composite_time + std::chrono::duration_cast<PaceClock::duration>(
+                                    std::chrono::duration<double>(smoothed_composite_interval * fraction));
+    };
     for (size_t generation = 0; generation < generated_frames; ++generation) {
         Frame* generated = present_manager.GetRenderFrame();
         blit_swapchain.PrepareFrame(device, generated, render_window.GetFramebufferLayout());
         frame_gen.GenerateInto(device, generated, generation);
+        generated->present_not_before = present_offset(generation);
         scheduler.Flush(*generated->render_ready);
         present_manager.Present(generated);
     }
+    frame->present_not_before = present_offset(generated_frames);
 #endif
 
     scheduler.Flush(*frame->render_ready);

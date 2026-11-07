@@ -336,6 +336,15 @@ void PresentManager::PresentThread(std::stop_token token) {
         // Wait for presentation frames
         frame_cv.wait(lock, token, [this] { return !present_queue.empty(); });
         if (!token.stop_requested()) {
+            // Frame generation pacing: only this thread pops, so the front frame stays the same
+            // while it waits (at most a real frame interval, see RendererVulkan::Composite).
+            const auto not_before = present_queue.front()->present_not_before;
+            if (std::chrono::steady_clock::now() < not_before) {
+                frame_cv.wait_until(lock, token, not_before, [] { return false; });
+                if (token.stop_requested()) {
+                    break;
+                }
+            }
             // Take the frame and notify anyone waiting
             Frame* frame = present_queue.front();
             present_queue.pop_front();
