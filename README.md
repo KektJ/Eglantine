@@ -51,14 +51,13 @@ Measured in crowded areas on a Ryzen 7 5800X3D and RTX 4070 Ti at 2x resolution.
 | Crowded town | 17 FPS | at least 26 FPS |
 | Heaviest crowd tested | about 9 FPS | 28-30 FPS |
 
+With the 60 FPS setting on, the heaviest crowd tested ran at 52-53 FPS, and 55-56 FPS with the two uniform buffer and texture handle settings also on.
+
 These come from play testing in a limited part of the game on one PC, so other areas may behave differently. They were measured on the PGO build.
 
 ### Which build to download
 
-| Build | Videos | Notes |
-|---|---|---|
-| **MSVC** | Play normally | The one to choose if you want the game's movies. It hasn't had the same fps comparison |
-| **PGO** (clang, MinGW) | **Don't play.** The screen stays blank and the game skips them | Its FFmpeg package has no AV1 decoder, and this game's movies are AV1. The results above come from this build |
+The Windows release is the **PGO** build (clang, MinGW). It now plays the game's movies, so the separate MSVC build from earlier releases isn't needed. It uses MSYS2's FFmpeg, which includes an AV1 decoder, and this game's movies are AV1.
 
 ### What changed
 
@@ -66,33 +65,40 @@ These come from play testing in a limited part of the game on one PC, so other a
 - **Run ahead of the GPU setting:** adds a **Relaxed** mode, which lets the game prepare its next frame while the GPU threads finish the current one, without the extra wait in the existing run-ahead mode.
 - **Storage buffer sizing:** upstream sized every native compute storage buffer from its mapping, up to 8 MiB, which caused flickering lines on the world map and a slower title screen in this game. This fork uses upstream's narrower version from [#561](https://github.com/Djihads80/Eglantine/pull/561), limited to DLSS passes. Upstream later reverted that change in [#569](https://github.com/Djihads80/Eglantine/pull/569) without giving a reason, so it may affect other games.
 - **Fire Emblem: Fortune's Weave 60 FPS setting:** keeps the game's own frame rate target at 60, which reached 43-46 FPS in the heaviest crowd tested and looked like normal speed. This hasn't been timed, and the game may run slower wherever it can't hold 60 FPS. It only works on the game version with build ID `DB93B0125F485060`.
+- **Uniform buffer and texture handle settings:** two optional speedups for the GPU back thread from [Frizti/Lichii](https://github.com/Frizti/Lichii). One checks small uniform buffers for changes directly in game memory and skips copying the unchanged ones. The other remembers where the texture handles read on every draw live in memory. Together they raised the heaviest crowd tested from about 53 to 55-56 FPS with the 60 FPS setting on.
+- **PGO profile trained on Fortune's Weave:** the PGO build's profile now includes about an hour of this game, weighted 3 to 1 over upstream's profile for the graphics and shader code. In testing this was within measurement noise of upstream's profile, so expect no real change.
+- **Movies on the PGO build:** it now links MSYS2's FFmpeg, which can decode AV1.
 - **Thread names on MinGW builds:** profilers and debuggers can now tell the emulator's threads apart.
 
 ### Using the settings
 
-Both settings are on the advanced graphics tab and can be set per game. They are off by default, so the emulator behaves normally until you change them. For Fortune's Weave, set:
+All of these settings are on the advanced graphics tab and can be set per game. They are off by default, so the emulator behaves normally until you change them. For Fortune's Weave, set:
 
 | Setting | Value | If something goes wrong |
 |---|---|---|
 | Texture array limit | 64 | Wrong textures: raise it to 128 or 256 |
 | Run ahead of the GPU | Relaxed | Freezes, crashes or rubberbanding: use **Previous frame** or **Auto** |
 | Fire Emblem: Fortune's Weave: 60 FPS (optional) | On | Slow motion: turn it off or lower the resolution. Don't use `EDEN_NX2_SWAP_INTERVAL` with it, or the game runs too fast |
+| Compare uniform buffers in place | On | Wrong colours or flickering: turn it off |
+| Cache texture handle lookups | On | Wrong textures: turn it off |
 
-Keep a backup save when using **Relaxed**. Running ahead can make a game overwrite data the GPU still needs, and upstream has seen freezes and crashes from this in other games. Neither setting has been tested with other games, so set them per game rather than globally.
+Keep a backup save when using **Relaxed**. Running ahead can make a game overwrite data the GPU still needs, and upstream has seen freezes and crashes from this in other games. None of these settings have been tested with other games, so set them per game rather than globally.
 
-The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP` and `EDEN_NX2_FRAMES_AHEAD` override these settings when set.
+The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP`, `EDEN_NX2_FRAMES_AHEAD`, `EDEN_NX2_UBO_INPLACE` and `EDEN_NX2_HANDLE_PTR_CACHE` override these settings when set.
 
 ### Known issues
 
 - Short hitches can still happen, with the worst single frames taking up to about 0.8 seconds.
 - A torch's light in one cave disappears at a certain distance. This may be an older bug, but that hasn't been confirmed.
-- Settings of 64 and Relaxed have only been tested in the parts of the game played so far.
-- Videos don't play on the PGO build. Use the MSVC build if you want to see them.
+- Settings of 64 and Relaxed have only been tested in the parts of the game played so far. The uniform buffer and texture handle settings have had one short test in the heaviest crowd.
+- One play session ended with the graphics driver resetting the GPU ("device loss"), which closes the emulator. It hasn't happened again, and the cause isn't known.
 - Real NVIDIA DLSS is optional and off by default. It needs NVIDIA's Streamline, which the Graphics tab can download. Without it, the game uses its own DLSS network at 1x and FSR 3.1 at higher resolutions.
 
 ### Credits
 
 The 60 FPS setting relies on the frame rate target's location and behavior as documented by [seedds/nxnative](https://github.com/seedds/nxnative) and [weile10000/FEFW-60fps](https://github.com/weile10000/FEFW-60fps). The setting is this fork's own implementation and doesn't use their files or cheat code. Please don't report problems with it to them.
+
+The uniform buffer and texture handle settings are ported from [Frizti/Lichii](https://github.com/Frizti/Lichii), where Dr. Sergio wrote them. The commits keep their authorship.
 
 ## Compatibility
 
