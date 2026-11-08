@@ -68,11 +68,14 @@ The Windows release is the **PGO** build (clang, MinGW). It now plays the game's
 - **Uniform buffer and texture handle settings:** two optional speedups for the GPU back thread from [Frizti/Lichii](https://github.com/Frizti/Lichii). One checks small uniform buffers for changes directly in game memory and skips copying the unchanged ones. The other remembers where the texture handles read on every draw live in memory. Together they raised the heaviest crowd tested from about 53 to 55-56 FPS with the 60 FPS setting on.
 - **PGO profile trained on Fortune's Weave:** the PGO build's profile now includes about an hour of this game, weighted 3 to 1 over upstream's profile for the graphics and shader code. In testing this was within measurement noise of upstream's profile, so expect no real change.
 - **Movies on the PGO build:** it now links MSYS2's FFmpeg, which can decode AV1.
+- **Recommended settings applied automatically:** when Fortune's Weave starts, the settings in the table below are applied, along with GPU accuracy **Fast** and asynchronous shader compilation **on**. Each one is applied only if you haven't changed it yourself, globally or for the game. The 60 FPS setting stays off.
+- **Fewer shader-compile stutters:** a series of shader compiler commits from Wael3rd's [PokeDinner](https://git.eden-emu.dev/Franseven/PokeDinner-a-Eglantine-Fork) fork. Pipelines that run the same shaders now share them instead of translating them again, and with asynchronous shader compilation on, new Switch 2 pipelines are translated on worker threads instead of the GPU thread. In a 40 minute session this halved the shader work on the GPU thread. The longest hitches mostly have other causes, so they didn't become less frequent.
+- **Built-in frame generation fixes:** the **Optical Flow Interpolation** frame generation in the graphics settings showed no visible effect, for two reasons. Each generated frame was a copy of the next real frame, and generated frames were sent straight after each other, so on a monitor faster than twice the game's frame rate they flashed for a single refresh. Both are fixed. The pacing fix needs **Asynchronous presentation** on. The interpolation itself is simple, so expect smearing on fast motion and UI.
 - **Thread names on MinGW builds:** profilers and debuggers can now tell the emulator's threads apart.
 
 ### Using the settings
 
-All of these settings are on the advanced graphics tab and can be set per game. They are off by default, so the emulator behaves normally until you change them. For Fortune's Weave, set:
+All of these settings are on the advanced graphics tab and can be set per game. When Fortune's Weave starts, the values below are used for any of them you haven't changed (see **Use recommended settings for Fire Emblem: Fortune's Weave**, which is on by default). For other games they are off by default. The recommended values for Fortune's Weave are:
 
 | Setting | Value | If something goes wrong |
 |---|---|---|
@@ -89,6 +92,7 @@ The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP`, `EDEN_NX2_FRAMES_AHEAD`,
 ### Known issues
 
 - Short hitches can still happen, with the worst single frames taking up to about 0.8 seconds.
+- In the heaviest crowd tested, the 60 FPS setting holds about 46-56 FPS at 2x with NVIDIA DLSS, depending on the view. None of the emulator's threads is fully busy there, so the remaining limit isn't one obvious piece of work.
 - A torch's light in one cave disappears at a certain distance. This may be an older bug, but that hasn't been confirmed.
 - Settings of 64 and Relaxed have only been tested in the parts of the game played so far. The uniform buffer and texture handle settings have had one short test in the heaviest crowd.
 - One play session ended with the graphics driver resetting the GPU ("device loss"), which closes the emulator. It hasn't happened again, and the cause isn't known.
@@ -97,6 +101,8 @@ The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP`, `EDEN_NX2_FRAMES_AHEAD`,
 ### Credits
 
 The 60 FPS setting relies on the frame rate target's location and behavior as documented by [seedds/nxnative](https://github.com/seedds/nxnative) and [weile10000/FEFW-60fps](https://github.com/weile10000/FEFW-60fps). The setting is this fork's own implementation and doesn't use their files or cheat code. Please don't report problems with it to them.
+
+The shader reuse and shader compiler changes are Wael3rd's, from PokeDinner. The commits keep their authorship.
 
 The uniform buffer and texture handle settings are ported from [Frizti/Lichii](https://github.com/Frizti/Lichii), where Dr. Sergio wrote them. The commits keep their authorship.
 
