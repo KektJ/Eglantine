@@ -56,6 +56,8 @@ inline std::vector<const char*> ApplyFortunesWeaveRecommendedSettings(Values& se
         applied.push_back(name);
     };
     recommend(settings.gpu_accuracy, GpuAccuracy::Low, "gpu_accuracy");
+    // Native graphics pipelines are translated on worker threads only with this on.
+    recommend(settings.use_asynchronous_shaders, true, "use_asynchronous_shaders");
     recommend(settings.texture_array_limit, TextureArrayLimit::Limit_64, "texture_array_limit");
     recommend(settings.frames_ahead_mode, FramesAheadMode::Relaxed, "frames_ahead_mode");
     recommend(settings.uniform_inplace_compare, true, "uniform_inplace_compare");

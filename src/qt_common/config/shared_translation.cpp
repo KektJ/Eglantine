@@ -296,8 +296,9 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
     INSERT(Settings, fortunes_weave_recommended_settings,
            tr("Use recommended settings for Fire Emblem: Fortune's Weave"),
            tr("When Fortune's Weave starts, uses this build's recommended GPU accuracy (Fast), "
-              "texture array limit (64), run-ahead (Relaxed), uniform buffer and texture handle "
-              "settings for any of them you haven't changed yourself, globally or for the game.\n"
+              "asynchronous shader compilation (on), texture array limit (64), run-ahead "
+              "(Relaxed), uniform buffer and texture handle settings for any of them you haven't "
+              "changed yourself, globally or for the game.\n"
               "Turn this off to use the "
               "emulator's defaults instead."));
     INSERT(Settings, texture_array_limit, tr("Texture array limit (experimental)"),

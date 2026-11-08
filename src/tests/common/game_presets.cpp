@@ -121,7 +121,10 @@ TEST_CASE("Fortune's Weave preset sets only settings the user hasn't chosen", "[
 
     const auto applied = Settings::ApplyFortunesWeaveRecommendedSettings(
         *settings, Settings::FortunesWeaveProgramId);
-    CHECK(applied.size() == 2);
+    // GPU accuracy, asynchronous shaders, texture array limit, uniform buffers.
+    CHECK(applied.size() == 4);
+    CHECK(settings->gpu_accuracy.GetValue() == Settings::GpuAccuracy::Low);
+    CHECK(settings->use_asynchronous_shaders.GetValue());
     CHECK(settings->texture_array_limit.GetValue() == Settings::TextureArrayLimit::Limit_64);
     CHECK(settings->uniform_inplace_compare.GetValue());
     CHECK(settings->frames_ahead_mode.GetValue() == Settings::FramesAheadMode::PreviousFrame);
