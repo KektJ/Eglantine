@@ -204,6 +204,9 @@ AppLoader::LoadResult AppLoader_NUP::Load(Kernel::KProcess& process, Core::Syste
         return result;
     }
 
+    // The RomFS factory below reads the RomFS now; with the system known, ReadRomFS applies
+    // the game's LayeredFS mods as the loose-ExeFS loader does.
+    loaded_system = &system;
     system.GetFileSystemController().RegisterProcess(
         process.GetProcessId(), base_title_id,
         std::make_shared<FileSys::RomFSFactory>(*this, system.GetContentProvider(),
@@ -236,6 +239,17 @@ ResultStatus AppLoader_NUP::ReadRomFS(FileSys::VirtualFile& out_file) {
     out_file = FileSys::CreateRomFS(merged);
     if (out_file == nullptr) {
         return ResultStatus::ErrorNoRomFS;
+    }
+    // The update is merged already (IsRomFSUpdatable is false), so RomFSFactory hands this file
+    // out as it is and its PatchRomFS (where LayeredFS happens) never runs: apply the mods here.
+    if (loaded_system != nullptr) {
+        const FileSys::PatchManager patch_manager(base_title_id,
+                                                  loaded_system->GetFileSystemController(),
+                                                  loaded_system->GetContentProvider());
+        if (auto patched = patch_manager.PatchRomFS(nullptr, out_file); patched != nullptr) {
+            out_file = std::move(patched);
+            LOG_INFO(Loader, "Applied RomFS patches (LayeredFS) for title {:016X}", base_title_id);
+        }
     }
     return ResultStatus::Success;
 }
