@@ -32,6 +32,11 @@ namespace Kernel::NvnTrace {
 /// Whether the trace is on (EDEN_NX2_NVN_TRACE set).
 bool Enabled();
 
+/// EDEN_NX2_NVN_TRACE=bench: before the first NVN lookup, game code times 200,000 host round
+/// trips (an svc that does nothing), 200,000 32-byte records into game memory and 200,000 empty
+/// loop steps, and the log gets the cost of each.
+bool Bench();
+
 /// Size of the stub area.
 constexpr u64 StubAreaSize = 0x20000;
 

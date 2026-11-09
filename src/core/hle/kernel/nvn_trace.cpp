@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <mutex>
 #include <span>
 #include <string>
@@ -25,6 +27,25 @@ namespace {
 
 constexpr u32 SvcLoaderResult = 0x4E01;
 constexpr u32 SvcProcResult = 0x4E02;
+constexpr u32 SvcBenchNothing = 0x4E03;
+constexpr u32 SvcBenchStart = 0x4E05;
+constexpr u32 SvcBenchRoundTrips = 0x4E06;
+constexpr u32 SvcBenchRecords = 0x4E07;
+constexpr u32 SvcBenchEmpty = 0x4E08;
+constexpr u64 BenchSteps = 200'000;
+
+// Bench (llvm-mc): pre runs bench once (a flag in the stub area), then goes on to the loader
+// wrapper (literal at +0x18), keeping the caller's x30 in x17. bench: svc 0x4E05; 200,000 x
+// svc 0x4E03; svc 0x4E06; 200,000 x two stp of x0-x3 to a ring; svc 0x4E07; 200,000 empty loop
+// steps; svc 0x4E08. It changes only x9 and x10.
+constexpr std::array<u32, 6> BenchPreCode{0xAA1E03F1, 0x94000007, 0xAA1103FE,
+                                          0x58000070, 0xD61F0200, 0xD503201F};
+constexpr std::array<u32, 26> BenchCode{
+    0x10000349, 0xF940012A, 0xB50002EA, 0xD280002A, 0xF900012A, 0xD409C0A1, 0xD281A809,
+    0xF2A00069, 0xD409C061, 0xF1000529, 0x54FFFFC1, 0xD409C0C1, 0xD281A809, 0xF2A00069,
+    0x100001CA, 0xA9000540, 0xA9010D42, 0xF1000529, 0x54FFFFA1, 0xD409C0E1, 0xD281A809,
+    0xF2A00069, 0xF1000529, 0x54FFFFE1, 0xD409C101, 0xD65F03C0};
+constexpr u64 BenchSize = 0xB0; // literal at 0x18, bench at 0x20, flag at 0x88, ring at 0x90
 
 // The stubs (AArch64, as llvm-mc assembles them). x16 and x17 may be clobbered at any call.
 //   wrapper: stp x29,x30,[sp,#-32]!; mov x29,sp; str x<name>,[sp,#16]; ldr x16,=target;
@@ -68,6 +89,8 @@ struct State {
     std::unordered_map<u64, size_t> entry_of; ///< real function -> entries index
     std::vector<Entry> entries;
     u64 last_presents{};
+    std::chrono::steady_clock::time_point bench_mark{};
+    double bench_ns[3]{};
 };
 
 State& GetState() {
@@ -139,6 +162,14 @@ bool Enabled() {
     return enabled;
 }
 
+bool Bench() {
+    static const bool bench = [] {
+        const char* text = std::getenv("EDEN_NX2_NVN_TRACE");
+        return text != nullptr && std::strcmp(text, "bench") == 0;
+    }();
+    return bench;
+}
+
 void Install(Core::System& system, KProcess& process, u64 sdk_base, u64 pad_start, u64 pad_end) {
     auto& memory = process.GetMemory();
     const auto symbols = Core::Symbols::GetSymbols(sdk_base, memory);
@@ -179,8 +210,20 @@ void Install(Core::System& system, KProcess& process, u64 sdk_base, u64 pad_star
     // The loader's pacibsp (a hint) becomes a branch to a far jump in the text padding, on to the
     // wrapper, which runs the loader from its second instruction on (position independent).
     const u64 wrapper = MakeWrapper(s, memory, loader + 4, StoreX0, SvcInsn(SvcLoaderResult));
+    u64 entry = wrapper;
+    if (Bench()) {
+        if (const u64 bench = Allocate(s, BenchSize); bench != 0) {
+            for (u64 i = 0; i < BenchSize; i += 8) {
+                memory.Write64(bench + i, 0);
+            }
+            WriteWords(memory, bench, BenchPreCode);
+            memory.Write64(bench + 0x18, wrapper);
+            WriteWords(memory, bench + 0x20, BenchCode);
+            entry = bench;
+        }
+    }
     WriteWords(memory, jump, FarJumpCode);
-    memory.Write64(jump + 8, wrapper);
+    memory.Write64(jump + 8, entry);
     const s64 distance = static_cast<s64>(jump) - static_cast<s64>(loader);
     if (distance >= (s64{1} << 27) || distance < -(s64{1} << 27)) {
         LOG_WARNING(Kernel, "NVN trace: the far jump at {:#x} is out of branch range", jump);
@@ -193,6 +236,25 @@ void Install(Core::System& system, KProcess& process, u64 sdk_base, u64 pad_star
 }
 
 bool HandleSvc(Core::System& system, u32 imm, std::array<u64, 8>& args) {
+    if (imm == SvcBenchNothing) {
+        return true; // a round trip and nothing else: what the bench times
+    }
+    if (imm >= SvcBenchStart && imm <= SvcBenchEmpty) {
+        auto& s = GetState();
+        const auto now = std::chrono::steady_clock::now();
+        if (imm != SvcBenchStart) {
+            s.bench_ns[imm - SvcBenchRoundTrips] =
+                std::chrono::duration<double, std::nano>(now - s.bench_mark).count() / BenchSteps;
+        }
+        if (imm == SvcBenchEmpty) {
+            LOG_INFO(Kernel,
+                     "NVN trace bench ({} steps each): host round trip (svc) {:.1f} ns, 32-byte "
+                     "record in game memory {:.1f} ns, empty loop step {:.1f} ns",
+                     BenchSteps, s.bench_ns[0], s.bench_ns[1], s.bench_ns[2]);
+        }
+        s.bench_mark = std::chrono::steady_clock::now();
+        return true;
+    }
     if (imm != SvcLoaderResult && imm != SvcProcResult) {
         return false;
     }
