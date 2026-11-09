@@ -112,6 +112,8 @@ private:
     [[nodiscard]] VirtualDir GetModificationLoadRoot(bool sdmc = false) const;
     [[nodiscard]] std::vector<std::string> GetDisabledAddons() const;
     void ApplyLayeredFS(VirtualFile& romfs, ContentRecordType type) const;
+    /// Settings::fortunes_weave_fewer_shadow_cascades / fortunes_weave_crowd_lod.
+    void ApplyFortunesWeaveDataPatches(VirtualFile& romfs) const;
     [[nodiscard]] std::vector<VirtualFile> CollectPatches(const std::vector<VirtualDir>& patch_dirs,
                                                           const std::string& build_id) const;
 

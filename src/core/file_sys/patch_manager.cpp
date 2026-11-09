@@ -8,10 +8,12 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
+#include <map>
 
 #include "common/assert.h"
 #include "common/hex_util.h"
 #include "common/logging.h"
+#include "common/game_presets.h"
 #include "common/settings.h"
 #ifndef _WIN32
 #include "common/string_util.h"
@@ -21,6 +23,7 @@
 #include "core/file_sys/common_funcs.h"
 #include "core/file_sys/content_archive.h"
 #include "core/file_sys/control_metadata.h"
+#include "core/file_sys/fortunes_weave_data.h"
 #include "core/file_sys/ips_layer.h"
 #include "core/file_sys/patch_manager.h"
 #include "core/file_sys/registered_cache.h"
@@ -601,6 +604,117 @@ void PatchManager::ApplyLayeredFS(VirtualFile& romfs, ContentRecordType type) co
     romfs = std::move(packed);
 }
 
+namespace {
+
+/// A directory tree of replacement files, laid over the RomFS.
+class Overlay {
+public:
+    /// Puts `data` at `path` (slash-separated), making the directories on the way.
+    void Add(std::string_view path, std::vector<u8> data) {
+        auto dir = root;
+        std::string dir_path;
+        std::string_view rest = path;
+        for (auto slash = rest.find('/'); slash != std::string_view::npos; slash = rest.find('/')) {
+            const std::string name{rest.substr(0, slash)};
+            rest.remove_prefix(slash + 1);
+            dir_path += name + '/';
+            auto& next = dirs[dir_path];
+            if (next == nullptr) {
+                next = std::make_shared<VectorVfsDirectory>(std::vector<VirtualFile>{},
+                                                            std::vector<VirtualDir>{}, name);
+                dir->AddDirectory(next);
+            }
+            dir = next;
+        }
+        dir->AddFile(std::make_shared<VectorVfsFile>(std::move(data), std::string{rest}));
+    }
+
+    std::shared_ptr<VectorVfsDirectory> root = std::make_shared<VectorVfsDirectory>();
+
+private:
+    std::map<std::string, std::shared_ptr<VectorVfsDirectory>> dirs;
+};
+
+bool Contains(const std::vector<u8>& data, std::string_view text) {
+    return std::search(data.begin(), data.end(), text.begin(), text.end()) != data.end();
+}
+
+/// Every .set file below `dir` that sets SceneShadow (path relative to the RomFS root).
+void CollectShadowSettings(const VirtualDir& dir, const std::string& path,
+                           std::vector<std::pair<std::string, std::vector<u8>>>& out) {
+    for (const auto& file : dir->GetFiles()) {
+        const auto& name = file->GetName();
+        if (name.size() > 4 && name.ends_with(".set")) {
+            auto data = file->ReadAllBytes();
+            if (Contains(data, "SceneShadow")) {
+                out.emplace_back(path + name, std::move(data));
+            }
+        }
+    }
+    for (const auto& sub : dir->GetSubdirectories()) {
+        CollectShadowSettings(sub, path + sub->GetName() + "/", out);
+    }
+}
+
+} // namespace
+
+void PatchManager::ApplyFortunesWeaveDataPatches(VirtualFile& romfs) const {
+    const bool cascades = Settings::values.fortunes_weave_fewer_shadow_cascades.GetValue();
+    const bool crowd_lod = Settings::values.fortunes_weave_crowd_lod.GetValue();
+    if ((!cascades && !crowd_lod) || romfs == nullptr) {
+        return;
+    }
+    auto extracted = ExtractRomFS(romfs);
+    if (extracted == nullptr) {
+        return;
+    }
+    Overlay overlay;
+    int shadow_files = 0;
+    bool lod = false;
+    if (cascades) {
+        constexpr std::string_view Root = "Graphics/Settings/";
+        constexpr std::string_view Base = "Graphics/Settings/Preset/Base.set";
+        if (const auto settings = extracted->GetDirectoryRelative(std::string{Root})) {
+            std::vector<std::pair<std::string, std::vector<u8>>> files;
+            CollectShadowSettings(settings, std::string{Root}, files);
+            for (auto& [path, data] : files) {
+                const bool base = path == Base;
+                if (!base && !Contains(data, "MaxCascadeCount")) {
+                    continue;
+                }
+                if (auto edited = FortunesWeave::LimitShadowCascades(data, 2, base)) {
+                    overlay.Add(path, std::move(*edited));
+                    ++shadow_files;
+                }
+            }
+        }
+    }
+    if (crowd_lod) {
+        constexpr std::string_view Lod = "Graphics/Settings/Preset/lodPresets.lod";
+        if (const auto file = extracted->GetFileRelative(std::string{Lod})) {
+            if (auto edited = FortunesWeave::LighterCrowdLod(file->ReadAllBytes())) {
+                overlay.Add(Lod, std::move(*edited));
+                lod = true;
+            }
+        }
+    }
+    if (shadow_files == 0 && !lod) {
+        LOG_WARNING(Loader,
+                    "Fire Emblem: Fortune's Weave: no settings file matched the data patches");
+        return;
+    }
+    auto layered = LayeredVfsDirectory::MakeLayeredDirectory({overlay.root, extracted});
+    auto packed = layered ? CreateRomFS(std::move(layered)) : nullptr;
+    if (packed == nullptr) {
+        return;
+    }
+    romfs = std::move(packed);
+    LOG_INFO(Loader,
+             "Fire Emblem: Fortune's Weave: 2 shadow cascades in {} settings files, lighter "
+             "crowds {}",
+             shadow_files, lod ? "on" : "off");
+}
+
 VirtualFile PatchManager::PatchRomFS(const NCA* base_nca, VirtualFile base_romfs,
                                      ContentRecordType type, VirtualFile packed_update_raw,
                                      bool apply_layeredfs) const {
@@ -724,6 +838,10 @@ VirtualFile PatchManager::PatchRomFS(const NCA* base_nca, VirtualFile base_romfs
     // LayeredFS
     if (apply_layeredfs) {
         ApplyLayeredFS(romfs, type);
+    }
+
+    if (type == ContentRecordType::Program && title_id == Settings::FortunesWeaveProgramId) {
+        ApplyFortunesWeaveDataPatches(romfs);
     }
 
     return romfs;

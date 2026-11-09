@@ -615,6 +615,12 @@ struct Values {
     // Fire Emblem: Fortune's Weave: 60 FPS through the game's own frame rate target (loader/nso.cpp).
     SwitchableSetting<bool> fortunes_weave_60fps{linkage, false, "fortunes_weave_60fps",
                                                  Category::RendererAdvanced};
+    // Fire Emblem: Fortune's Weave: lighter versions of the game's own graphics settings files,
+    // made from its RomFS when it loads (file_sys/fortunes_weave_data.h, patch_manager.cpp).
+    SwitchableSetting<bool> fortunes_weave_fewer_shadow_cascades{
+        linkage, false, "fortunes_weave_fewer_shadow_cascades", Category::RendererAdvanced};
+    SwitchableSetting<bool> fortunes_weave_crowd_lod{linkage, false, "fortunes_weave_crowd_lod",
+                                                     Category::RendererAdvanced};
 
     // When Fortune's Weave boots, sets this fork's recommended values for the settings below that
     // the user hasn't chosen (common/game_presets.h).

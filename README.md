@@ -71,6 +71,8 @@ The Windows release is the **PGO** build (clang, MinGW). It now plays the game's
 - **Recommended settings applied automatically:** when Fortune's Weave starts, the settings in the table below are applied, along with GPU accuracy **Fast** and asynchronous shader compilation **on**. Each one is applied only if you haven't changed it yourself, globally or for the game. The 60 FPS setting stays off.
 - **Fewer shader-compile stutters:** a series of shader compiler commits from Wael3rd's [PokeDinner](https://git.eden-emu.dev/Franseven/PokeDinner-a-Eglantine-Fork) fork. Pipelines that run the same shaders now share them instead of translating them again, and with asynchronous shader compilation on, new Switch 2 pipelines are translated on worker threads instead of the GPU thread. In a 40 minute session this halved the shader work on the GPU thread. The longest hitches mostly have other causes, so they didn't become less frequent.
 - **Built-in frame generation fixes:** the **Optical Flow Interpolation** frame generation in the graphics settings showed no visible effect, for two reasons. Each generated frame was a copy of the next real frame, and generated frames were sent straight after each other, so on a monitor faster than twice the game's frame rate they flashed for a single refresh. Both are fixed. The pacing fix needs **Asynchronous presentation** on. The interpolation itself is simple, so expect smearing on fast motion and UI.
+- **Lighter graphics data for Fire Emblem: Fortune's Weave (optional, off by default):** two settings that edit the game's own graphics settings files in memory when it loads, using your dump. Nothing from the game is shipped. **2 shadow cascades** draws the sun's shadows in 2 cascades instead of the 4 that the towns and battle maps use, so every shadow caster is drawn fewer times. **Lighter crowds** makes crowd characters switch to simpler models sooner and stop being drawn sooner far away; main characters are left alone. In the heaviest crowd tested, standing still, this was about the same frame rate (55.7 vs 55.7 FPS over 150 s, 1-2% higher in the steadiest stretch), but running around felt less stuttery and no visual problems were noticed. Distant shadows may be softer or missing, and distant crowd characters simpler or gone.
+- **Mods for `.nup` games:** LayeredFS mods in `load/<title id>/` were ignored when a game was started from a `.nup` package. They're applied now.
 - **Thread names on MinGW builds:** profilers and debuggers can now tell the emulator's threads apart.
 
 ### Using the settings
@@ -86,6 +88,8 @@ All of these settings are on the advanced graphics tab and can be set per game. 
 | Cache texture handle lookups | On | Wrong textures: turn it off |
 
 Keep a backup save when using **Relaxed**. Running ahead can make a game overwrite data the GPU still needs, and upstream has seen freezes and crashes from this in other games. None of these settings have been tested with other games, so set them per game rather than globally.
+
+**Fire Emblem: Fortune's Weave: 2 shadow cascades** and **Fire Emblem: Fortune's Weave: lighter crowds** are also on the advanced graphics tab. They aren't part of the recommended settings and stay off unless you turn them on. Both take effect after restarting the game.
 
 The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP`, `EDEN_NX2_FRAMES_AHEAD`, `EDEN_NX2_UBO_INPLACE` and `EDEN_NX2_HANDLE_PTR_CACHE` override these settings when set.
 

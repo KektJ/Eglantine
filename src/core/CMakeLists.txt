@@ -127,6 +127,8 @@ add_library(core STATIC
     file_sys/partition_filesystem.cpp
     file_sys/partition_filesystem.h
     file_sys/patch_manager.cpp
+    file_sys/fortunes_weave_data.cpp
+    file_sys/fortunes_weave_data.h
     file_sys/patch_manager.h
     file_sys/program_metadata.cpp
     file_sys/program_metadata.h

@@ -293,6 +293,16 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
               "the game version it was made for; other versions ignore it. Leave "
               "EDEN_NX2_SWAP_INTERVAL unset, or the game runs too fast.\nTakes effect after "
               "restarting the game."));
+    INSERT(Settings, fortunes_weave_fewer_shadow_cascades,
+           tr("Fire Emblem: Fortune's Weave: 2 shadow cascades"),
+           tr("Draws the sun's shadows in 2 cascades instead of the 4 the towns and battle maps "
+              "use, so every shadow caster is drawn fewer times. Distant shadows are softer or "
+              "missing.\nTakes effect after restarting the game."));
+    INSERT(Settings, fortunes_weave_crowd_lod, tr("Fire Emblem: Fortune's Weave: lighter crowds"),
+           tr("Crowd characters switch to their simpler models at twice the size on screen, and "
+              "stop being drawn sooner far away (under 5% of the screen and over 25 m away). Main "
+              "characters keep the game's own settings.\nTakes effect after restarting the "
+              "game."));
     INSERT(Settings, fortunes_weave_recommended_settings,
            tr("Use recommended settings for Fire Emblem: Fortune's Weave"),
            tr("When Fortune's Weave starts, uses this build's recommended GPU accuracy (Fast), "
