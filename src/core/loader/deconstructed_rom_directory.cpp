@@ -24,6 +24,7 @@
 #include "core/file_sys/romfs_factory.h"
 #include "core/hle/kernel/k_page_table.h"
 #include "core/hle/kernel/k_process.h"
+#include "core/hle/kernel/nvn_trace.h"
 #include "core/hle/service/filesystem/filesystem.h"
 #include "core/loader/deconstructed_rom_directory.h"
 #include "core/loader/nso.h"
@@ -478,6 +479,7 @@ AppLoader_DeconstructedRomDirectory::LoadResult AppLoader_DeconstructedRomDirect
         code_size = *tentative_next_load_addr;
     }
 
+
     // Enable direct memory mapping in case of NCE.
     const u64 fastmem_base = [&]() -> size_t {
         if (is_application && Settings::IsNceEnabled()) {
@@ -525,6 +527,20 @@ AppLoader_DeconstructedRomDirectory::LoadResult AppLoader_DeconstructedRomDirect
         next_load_addr = *tentative_next_load_addr;
         modules.insert_or_assign(load_addr, module);
         LOG_DEBUG(Loader, "loaded module {} @ {:#x}", module, load_addr);
+    }
+
+    // EDEN_NX2_NVN_TRACE: hook nvnBootstrapLoader in the sdk. Its far jump goes in the padding
+    // between the end of the sdk's code and its read-only data (both from the NSO header).
+    if (is_application && Kernel::NvnTrace::Enabled()) {
+        const auto sdk = std::find_if(modules.begin(), modules.end(),
+                                      [](const auto& m) { return m.second == "sdk"; });
+        NSOHeader header{};
+        if (const auto file = dir->GetFile("sdk");
+            sdk != modules.end() && file && file->ReadObject(&header) == sizeof(header)) {
+            const u64 code_end = sdk->first + header.segments[0].location + header.segments[0].size;
+            const u64 ro_start = sdk->first + header.segments[1].location;
+            Kernel::NvnTrace::Install(system, process, sdk->first, code_end, ro_start);
+        }
     }
 
     if (standalone) {

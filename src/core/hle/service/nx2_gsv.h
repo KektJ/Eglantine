@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/hle/kernel/nvn_trace.h"
 #include "common/alignment.h"
 #include "common/div_ceil.h"
 #include "common/game_presets.h"
@@ -1724,6 +1725,7 @@ private:
         const auto* w = ctx.CommandBuffer();
         ++m_presents;
         Core::g_nx2_present_count.fetch_add(1, std::memory_order_relaxed);
+        Kernel::NvnTrace::OnPresent(system, m_presents);
         if (m_presents <= 4 || (m_presents % 600) == 0) {
             LOG_INFO(Service, "nx2:vi2 229 present #{} token={:#x} slot={} image={}", m_presents,
                      u64{w[2]} | (u64{w[3]} << 32), w[4], w[5]);
