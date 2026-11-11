@@ -106,4 +106,36 @@ void TranslatorVisitor::ATOMS(u64 insn) {
     StoreResult(*this, atoms.dest_reg, result, atoms.size);
 }
 
+// ATOMS_cas as the Switch 2 lowering emits it for ATOMS.CAST.SPIN.32 (case 0x38d in
+// lower_to_maxwell.h), in that lowering's own encoding: dest 0..7, address 8..15, compare 20..27,
+// signed word offset 28..41, new value 42..49 and LOWERED_CAS_MARK in 50..55. The real Maxwell
+// ATOMS.CAS encoding is still not implemented. Ported from TheSneakyBadger's Fortune's Eden.
+void TranslatorVisitor::ATOMS_cas(u64 insn) {
+    constexpr u64 LOWERED_CAS_MARK = 0x2d;
+    union {
+        u64 raw;
+        BitField<0, 8, IR::Reg> dest_reg;
+        BitField<8, 8, IR::Reg> addr_reg;
+        BitField<20, 8, IR::Reg> compare_reg;
+        BitField<28, 14, s64> word_offset;
+        BitField<42, 8, IR::Reg> value_reg;
+        BitField<50, 6, u64> mark;
+    } const cas{insn};
+    if (cas.mark != LOWERED_CAS_MARK) {
+        throw NotImplementedException("Instruction ATOMS (cas) is not implemented");
+    }
+    const s32 byte_offset{static_cast<s32>(cas.word_offset.Value() * 4)};
+    IR::U32 offset{ir.Imm32(static_cast<u32>(byte_offset))};
+    if (cas.addr_reg != IR::Reg::RZ) {
+        offset = ir.IAdd(X(cas.addr_reg), ir.Imm32(byte_offset));
+    }
+    // ATOMS.CAST.SPIN is not a plain CAS: it returns 1 when the value was stored and 0 when it
+    // wasn't, and the compiler's retry loops test for 1. Returning the old value (as for CAS) makes
+    // every successful update look like a failure, so loops keep adding until their safety limit
+    // (wrong sums and ~10 ms compute shaders in the Saramis Guesthouse; found by nanachi7700).
+    const IR::U32 compare{X(cas.compare_reg)};
+    const IR::U32 old{ir.SharedAtomicCompareExchange(offset, compare, X(cas.value_reg))};
+    X(cas.dest_reg, IR::U32{ir.Select(ir.IEqual(old, compare), ir.Imm32(1), ir.Imm32(0))});
+}
+
 } // namespace Shader::Maxwell

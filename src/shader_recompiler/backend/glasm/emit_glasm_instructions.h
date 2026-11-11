@@ -382,6 +382,8 @@ void EmitSharedAtomicOr32(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_of
                           ScalarU32 value);
 void EmitSharedAtomicXor32(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_offset,
                            ScalarU32 value);
+void EmitSharedAtomicCompareExchange32(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_offset,
+                                       ScalarU32 compare, ScalarU32 value);
 void EmitSharedAtomicExchange32(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_offset,
                                 ScalarU32 value);
 void EmitSharedAtomicExchange64(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_offset,

@@ -261,6 +261,7 @@ add_library(video_core STATIC
     texture_cache/accelerated_swizzle.h
     texture_cache/decode_bc.cpp
     texture_cache/decode_bc.h
+    texture_cache/dependency_cache.h
     texture_cache/descriptor_table.h
     texture_cache/formatter.cpp
     texture_cache/formatter.h

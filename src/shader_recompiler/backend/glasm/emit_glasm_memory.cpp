@@ -302,6 +302,10 @@ void EmitSharedAtomicXor32(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_o
     ctx.Add("ATOMS.XOR.U32 {},{},shared_mem[{}];", inst, value, pointer_offset);
 }
 
+void EmitSharedAtomicCompareExchange32(EmitContext&, IR::Inst&, ScalarU32, ScalarU32, ScalarU32) {
+    throw NotImplementedException("GLASM shared memory compare-and-swap");
+}
+
 void EmitSharedAtomicExchange32(EmitContext& ctx, IR::Inst& inst, ScalarU32 pointer_offset,
                                 ScalarU32 value) {
     ctx.Add("ATOMS.EXCH.U32 {},{},shared_mem[{}];", inst, value, pointer_offset);

@@ -161,6 +161,13 @@ Id EmitSharedAtomicXor32(EmitContext& ctx, Id offset, Id value) {
     return SharedAtomicU32(ctx, offset, value, &Sirit::Module::OpAtomicXor);
 }
 
+Id EmitSharedAtomicCompareExchange32(EmitContext& ctx, Id offset, Id compare, Id value) {
+    const Id pointer{SharedPointer(ctx, offset)};
+    const auto [scope, semantics]{AtomicArgs(ctx)};
+    return ctx.OpAtomicCompareExchange(ctx.U32[1], pointer, scope, semantics, semantics, value,
+                                       compare);
+}
+
 Id EmitSharedAtomicExchange32(EmitContext& ctx, Id offset, Id value) {
     return SharedAtomicU32(ctx, offset, value, &Sirit::Module::OpAtomicExchange);
 }

@@ -892,9 +892,7 @@ ImageViewId TextureCache<P>::VisitImageView(u32 index, bool compute) {
 
 template <class P>
 FramebufferId TextureCache<P>::GetFramebufferId(const RenderTargets& key) {
-    const auto [pair, is_new] = framebuffers.try_emplace(key);
-    FramebufferId& framebuffer_id = pair->second;
-    if (!is_new) {
+    if (const FramebufferId framebuffer_id = framebuffers.Find(key); framebuffer_id) {
         return framebuffer_id;
     }
     std::array<ImageView*, NUM_RT> color_buffers;
@@ -903,7 +901,12 @@ FramebufferId TextureCache<P>::GetFramebufferId(const RenderTargets& key) {
     });
     ImageView* const depth_buffer = key.depth_buffer_id ? &slot_image_views[key.depth_buffer_id] : nullptr;
     runtime.FlushDeferredClear();
-    framebuffer_id = slot_framebuffers.insert(runtime, color_buffers, depth_buffer, key);
+    const FramebufferId framebuffer_id =
+        slot_framebuffers.insert(runtime, color_buffers, depth_buffer, key);
+    std::array<ImageViewId, NUM_RT + 1> views;
+    std::ranges::copy(key.color_buffer_ids, views.begin());
+    views.back() = key.depth_buffer_id;
+    framebuffers.Insert(key, framebuffer_id, views);
     return framebuffer_id;
 }
 
@@ -3544,22 +3547,18 @@ void TextureCache<P>::RemoveImageViewReferences(std::span<const ImageViewId> rem
 template <class P>
 void TextureCache<P>::RemoveFramebuffers(std::span<const ImageViewId> removed_views) {
     runtime.FlushDeferredClear();
-    auto it = framebuffers.begin();
-    while (it != framebuffers.end()) {
-        if (it->first.Contains(removed_views)) {
-            auto framebuffer_id = it->second;
-            ASSERT(framebuffer_id);
-            if (framebuffer_id == last_framebuffer_id) {
-                last_framebuffer_id = {};
-                last_framebuffer_serial = 0;
-            }
-            sentenced_framebuffers.Push(std::move(slot_framebuffers[framebuffer_id]));
-            slot_framebuffers.erase(framebuffer_id);
-            it = framebuffers.erase(it);
-        } else {
-            ++it;
+    // Only the framebuffers that use a removed view (nanachi7700's change, through
+    // TheSneakyBadger's Fortune's Eden): scanning every cached framebuffer for each deleted image
+    // was a hot spot when scenes change.
+    framebuffers.EraseDependencies(removed_views, [this](FramebufferId framebuffer_id) {
+        ASSERT(framebuffer_id);
+        if (framebuffer_id == last_framebuffer_id) {
+            last_framebuffer_id = {};
+            last_framebuffer_serial = 0;
         }
-    }
+        sentenced_framebuffers.Push(std::move(slot_framebuffers[framebuffer_id]));
+        slot_framebuffers.erase(framebuffer_id);
+    });
 }
 
 template <class P>

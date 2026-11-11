@@ -31,6 +31,7 @@
 #include <ranges>
 #include "common/scratch_buffer.h"
 #include "common/slot_vector.h"
+#include "video_core/texture_cache/dependency_cache.h"
 #include "video_core/texture_cache/pending_download.h"
 #include "common/thread_worker.h"
 #include "video_core/compatible_formats.h"
@@ -547,7 +548,9 @@ private:
     FramebufferId last_framebuffer_id{};
     u64 last_framebuffer_serial = 0;
 
-    ::Common::unordered_map<RenderTargets, FramebufferId> framebuffers;
+    /// Framebuffers by render targets, with a reverse index of the views each uses: removing an
+    /// image visits only the framebuffers of its views instead of all of them.
+    DependencyCache<RenderTargets, FramebufferId, ImageViewId, NUM_RT + 1> framebuffers;
     ::Common::unordered_map<u64, std::vector<ImageMapId>, Common::IdentityHash<u64>> page_table;
     ::Common::unordered_map<ImageId, boost::container::small_vector<ImageViewId, 16>> sparse_views;
 

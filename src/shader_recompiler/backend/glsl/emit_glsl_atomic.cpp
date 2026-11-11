@@ -90,6 +90,12 @@ void EmitSharedAtomicXor32(EmitContext& ctx, IR::Inst& inst, std::string_view po
     ctx.AddU32("{}=atomicXor(smem[{}>>2],{});", inst, pointer_offset, value);
 }
 
+void EmitSharedAtomicCompareExchange32(EmitContext& ctx, IR::Inst& inst,
+                                       std::string_view pointer_offset, std::string_view compare,
+                                       std::string_view value) {
+    ctx.AddU32("{}=atomicCompSwap(smem[{}>>2],{},{});", inst, pointer_offset, compare, value);
+}
+
 void EmitSharedAtomicExchange32(EmitContext& ctx, IR::Inst& inst, std::string_view pointer_offset,
                                 std::string_view value) {
     ctx.AddU32("{}=atomicExchange(smem[{}>>2],{});", inst, pointer_offset, value);
