@@ -177,6 +177,11 @@ public:
 
     size_t MaxContinuousRange(GPUVAddr gpu_addr, size_t size) const;
 
+    /// Bumped after each page table change: lookups cached under one value stay valid until then.
+    [[nodiscard]] u64 MapSerial() const {
+        return map_serial.load(std::memory_order_acquire);
+    }
+
     bool IsWithinGPUAddressRange(GPUVAddr gpu_addr) const {
         return gpu_addr < address_space_size;
     }
@@ -201,6 +206,8 @@ private:
     template <typename FuncMapped, typename FuncReserved, typename FuncUnmapped>
     inline void MemoryOperation(GPUVAddr gpu_src_addr, std::size_t size, bool is_big_page, FuncMapped&& func_mapped, FuncReserved&& func_reserved, FuncUnmapped&& func_unmapped) const;
 
+    size_t MaxContinuousRangeUncached(GPUVAddr gpu_addr, size_t size) const;
+
     void ReadBlockImpl(GPUVAddr gpu_src_addr, void* dest_buffer, std::size_t size, VideoCommon::CacheType which, bool unsafe) const;
     void WriteBlockImpl(GPUVAddr gpu_dest_addr, const void* src_buffer, std::size_t size, VideoCommon::CacheType which, bool unsafe);
 
@@ -224,9 +231,6 @@ private:
     const u8* CachedPagePointer(GPUVAddr addr) const;
 
     std::atomic<GPUVAddr> native_syncpoint_shim{};
-    /// Bumped after every page table change (PageTableOp, BigPageTableOp): CachedPagePointer
-    /// drops its pointers when it changes.
-    std::atomic<u64> map_serial{};
     Core::System& system;
     MaxwellDeviceMemoryManager& memory;
 
@@ -262,7 +266,7 @@ private:
     inline void SetEntry(size_t position, EntryType entry, bool is_big_page);
 
     Common::MultiLevelPageTable<u32> page_table;
-    Common::RangeMap<GPUVAddr, PTEKind> kind_map;
+    mutable Common::RangeMap<GPUVAddr, PTEKind> kind_map;
     Common::SparseLargeVector<u32> big_page_table_dev;
 
     std::vector<u64> big_page_continuous;
@@ -271,6 +275,9 @@ private:
 
     bool native_tiling{};
     mutable std::mutex guard;
+    /// Bumped after every page table change (PageTableOp, BigPageTableOp): MaxContinuousRange
+    /// answers are kept until then, and CachedPagePointer drops its pointers when it changes.
+    std::atomic<u64> map_serial{};
 
     static constexpr size_t continuous_bits = 64;
 

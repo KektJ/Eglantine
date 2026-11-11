@@ -60,8 +60,6 @@ private:
     u64 base_title_id{};
     std::string display_version;
     bool has_program{};
-    /// Set by Load: the game's RomFS then gets its LayeredFS mods (user/load/<title id>/).
-    Core::System* loaded_system{};
 };
 
 } // namespace Loader
