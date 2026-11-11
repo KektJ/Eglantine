@@ -40,7 +40,17 @@ It's written in C++ with portability in mind, with builds for Windows, Linux and
 
 ## About this fork
 
-This is an unofficial fork of [Eglantine](https://github.com/Djihads80/Eglantine), aimed at raising the frame rate in crowded areas of Fire Emblem: Fortune's Weave. The work is on the `perf/crowded-areas` branch. Please report problems caused by these changes here, not upstream.
+This is an unofficial fork of [Eglantine](https://github.com/Djihads80/Eglantine), aimed at raising the frame rate in crowded areas of Fire Emblem: Fortune's Weave. Releases are named **Eglantine KektJ** (the current one is **0.1**, on the `KektJ-0.1` branch). Please report problems caused by these changes [here](https://github.com/KektJ/Eglantine/issues), not upstream.
+
+### Eglantine KektJ 0.1
+
+- **Up to date with upstream Eglantine 0.1.0-rc3** (234 upstream changes since the last release), including its background building of cached pipelines, mesh pipelines kept in the pipeline cache, and a fix that applies mods to `.nup` games (this fork's own version of that fix was dropped in favour of upstream's).
+- **User data now lives in `%APPDATA%\eglantine`** (upstream's change; earlier releases of this fork used `%APPDATA%\eden`). On first start, if there is no `eglantine` folder yet, Eglantine offers to move the old data over. If an `eglantine` folder already exists (for example from an upstream build), it is used as it is: copy your `eden` folder's contents over it yourself if you want your saves and settings from this fork's earlier releases.
+- **Switch 2 shared-memory compare-and-swap** (`ATOMS.CAST.SPIN`): shaders that use it now translate, and return what the game's loops expect. Ported from TheSneakyBadger's [Fortune's Eden](https://github.com/TheSneakyBadger/FEFW-Stable-with-60-FPS-Patch) (found by nanachi7700; it held the Saramis Guesthouse at 45 FPS there).
+- **Switch 2 compute shaders' stack** is mapped into the shader's local memory instead of running past it (a GPU fault on Linux's RADV driver, undefined reads elsewhere). From Fortune's Eden.
+- **Faster image removal in the texture cache:** framebuffers are looked up by the views they use instead of being scanned all at once each time an image is removed (nanachi7700's change, through Fortune's Eden).
+- **New optional settings: reflections** (Full, Reduced to 8 rays, or Off) **and ambient occlusion**, next to the existing shadow cascade and crowd settings. They edit the game's own graphics settings in memory when it loads, from your dump; nothing is shipped or changed on disk. The idea comes from Fortune's Eden's Performance page.
+- The window title reads *Eglantine KektJ 0.1*.
 
 ### Results
 
@@ -94,6 +104,8 @@ Keep a backup save when using **Relaxed**. Running ahead can make a game overwri
 The environment variables `EDEN_NX2_TEXTURE_ARRAY_CAP`, `EDEN_NX2_FRAMES_AHEAD`, `EDEN_NX2_UBO_INPLACE` and `EDEN_NX2_HANDLE_PTR_CACHE` override these settings when set.
 
 ### Known issues
+
+- Players report that when two pre-rendered movies play back to back (for example on the Cai route: the intro, then Cai meeting Theodore, then the tournament announcement), the second one can stay black on the PGO build, while earlier MSVC builds played them. Decoding itself was checked: the PGO build's FFmpeg decodes those movies back to back correctly, so the cause is elsewhere and still being looked into. A log (`%APPDATA%\eglantine\log\eden_log.txt`) from a session where it happens would help.
 
 - Short hitches can still happen, with the worst single frames taking up to about 0.8 seconds.
 - In the heaviest crowd tested, the 60 FPS setting holds about 46-56 FPS at 2x with NVIDIA DLSS, depending on the view. None of the emulator's threads is fully busy there, so the remaining limit isn't one obvious piece of work.
