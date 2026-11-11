@@ -49,7 +49,8 @@ else()
     set(BUILD_AUTO_UPDATE_WEBSITE "https://git.eden-emu.dev")
     set(BUILD_AUTO_UPDATE_API "stable.eden-emu.dev")
     set(BUILD_AUTO_UPDATE_REPO "eden-emu/eden")
-    set(REPO_NAME "Eglantine")
+    # KektJ's Fortune's Weave performance fork of Eglantine (github.com/KektJ/Eglantine).
+    set(REPO_NAME "Eglantine KektJ 0.1")
 endif()
 
 set(BUILD_ID ${GIT_REFSPEC})
