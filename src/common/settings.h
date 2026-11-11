@@ -621,6 +621,18 @@ struct Values {
         linkage, false, "fortunes_weave_fewer_shadow_cascades", Category::RendererAdvanced};
     SwitchableSetting<bool> fortunes_weave_crowd_lod{linkage, false, "fortunes_weave_crowd_lod",
                                                      Category::RendererAdvanced};
+    SwitchableSetting<FortunesWeaveReflections, true> fortunes_weave_reflections{
+        linkage,
+        FortunesWeaveReflections::Full,
+        FortunesWeaveReflections::Full,
+        FortunesWeaveReflections::Off,
+        "fortunes_weave_reflections",
+        Category::RendererAdvanced,
+        Specialization::Default,
+        true,
+        false};
+    SwitchableSetting<bool> fortunes_weave_ambient_occlusion{
+        linkage, true, "fortunes_weave_ambient_occlusion", Category::RendererAdvanced};
 
     // When Fortune's Weave boots, sets this fork's recommended values for the settings below that
     // the user hasn't chosen (common/game_presets.h).

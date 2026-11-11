@@ -303,6 +303,14 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
               "stop being drawn sooner far away (under 5% of the screen and over 25 m away). Main "
               "characters keep the game's own settings.\nTakes effect after restarting the "
               "game."));
+    INSERT(Settings, fortunes_weave_reflections, tr("Fire Emblem: Fortune's Weave: reflections"),
+           tr("The game's screen-space reflections, strongest in the towns: Full (32 rays per "
+              "pixel, as the game sets them), Reduced (8 rays, a little grainier) or Off. The "
+              "lighter settings save GPU time.\nTakes effect after restarting the game."));
+    INSERT(Settings, fortunes_weave_ambient_occlusion,
+           tr("Fire Emblem: Fortune's Weave: ambient occlusion"),
+           tr("The soft shading in corners and creases (SSAO). Off saves GPU time everywhere, "
+              "with flatter lighting.\nTakes effect after restarting the game."));
     INSERT(Settings, fortunes_weave_recommended_settings,
            tr("Use recommended settings for Fire Emblem: Fortune's Weave"),
            tr("When Fortune's Weave starts, uses this build's recommended GPU accuracy (Fast), "
@@ -467,6 +475,12 @@ std::unique_ptr<ComboboxTranslationMap> ComboboxEnumeration(QObject* parent) {
                               PAIR(FramePacingMode, Target_60, tr("60 FPS")),
                               PAIR(FramePacingMode, Target_90, tr("90 FPS")),
                               PAIR(FramePacingMode, Target_120, tr("120 FPS")),
+                          }});
+    translations->insert({Settings::EnumMetadata<Settings::FortunesWeaveReflections>::Index(),
+                          {
+                              PAIR(FortunesWeaveReflections, Full, tr("Full")),
+                              PAIR(FortunesWeaveReflections, Reduced, tr("Reduced (8 rays)")),
+                              PAIR(FortunesWeaveReflections, Off, tr("Off")),
                           }});
     translations->insert({Settings::EnumMetadata<Settings::TextureArrayLimit>::Index(),
                           {

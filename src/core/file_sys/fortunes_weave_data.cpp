@@ -386,45 +386,97 @@ Node SameKind(const Node& like, double value) {
 
 } // namespace
 
-std::optional<std::vector<u8>> LimitShadowCascades(std::span<const u8> file, int cascades,
-                                                   bool add_if_missing) {
+namespace {
+
+/// Calls `edit` on the value of every key frame of <section>.<key> (an array of {frame, value}
+/// maps; a value-less key frame keeps the previous value). True when one of them changed.
+template <typename Edit>
+bool EditKeyframes(Node& doc, std::string_view section, std::string_view key, Edit&& edit) {
+    Node* frames = nullptr;
+    if (Node* values = doc.Find(section); values != nullptr) {
+        frames = values->Find(key);
+    }
+    if (frames == nullptr || frames->kind != Node::Kind::Array) {
+        return false;
+    }
+    bool changed = false;
+    for (auto& frame : frames->items) {
+        if (Node* value = frame.Find("value"); value != nullptr) {
+            changed |= edit(*value);
+        }
+    }
+    return changed;
+}
+
+/// An integer above `limit` becomes `limit`.
+auto LowerTo(s64 limit) {
+    return [limit](Node& value) {
+        if (value.kind != Node::Kind::Int || value.unsigned_big || value.integer <= limit) {
+            return false;
+        }
+        value.integer = limit;
+        return true;
+    };
+}
+
+/// A true boolean becomes false.
+bool TurnOff(Node& value) {
+    if (value.kind != Node::Kind::Bool || !value.boolean) {
+        return false;
+    }
+    value.boolean = false;
+    return true;
+}
+
+} // namespace
+
+std::optional<std::vector<u8>> EditGraphicsSettings(std::span<const u8> file,
+                                                    const GraphicsSettingsEdits& edits) {
     auto doc = Parse(file);
     if (!doc) {
         return std::nullopt;
     }
-    Node* shadow = doc->Find("SceneShadow");
-    if (shadow == nullptr || shadow->kind != Node::Kind::Map) {
-        return std::nullopt;
-    }
     bool changed = false;
-    if (Node* keys = shadow->Find("MaxCascadeCount"); keys != nullptr) {
-        if (keys->kind != Node::Kind::Array) {
-            return std::nullopt;
+    if (edits.max_shadow_cascades > 0) {
+        Node* shadow = doc->Find("SceneShadow");
+        if (shadow != nullptr && shadow->Find("MaxCascadeCount") != nullptr) {
+            changed |= EditKeyframes(*doc, "SceneShadow", "MaxCascadeCount",
+                                     LowerTo(edits.max_shadow_cascades));
+        } else if (shadow != nullptr && shadow->kind == Node::Kind::Map &&
+                   edits.add_shadow_cascades) {
+            // As the maps write it: [{"frame": -1, "value": n}] (-1: no key frames, one value).
+            Node key;
+            key.kind = Node::Kind::Map;
+            key.Add(Node::Str("frame"), Node::Int(-1));
+            key.Add(Node::Str("value"), Node::Int(edits.max_shadow_cascades));
+            Node keys_node;
+            keys_node.kind = Node::Kind::Array;
+            keys_node.items.push_back(std::move(key));
+            shadow->Add(Node::Str("MaxCascadeCount"), std::move(keys_node));
+            changed = true;
         }
-        // Each entry is a key frame: {frame, value}; a value-less one keeps the previous value.
-        for (auto& key : keys->items) {
-            Node* value = key.Find("value");
-            if (value != nullptr && value->kind == Node::Kind::Int && value->integer > cascades) {
-                value->integer = cascades;
-                changed = true;
-            }
-        }
-    } else if (add_if_missing) {
-        // As the maps write it: [{"frame": -1, "value": n}] (-1: no key frames, one value).
-        Node key;
-        key.kind = Node::Kind::Map;
-        key.Add(Node::Str("frame"), Node::Int(-1));
-        key.Add(Node::Str("value"), Node::Int(cascades));
-        Node keys_node;
-        keys_node.kind = Node::Kind::Array;
-        keys_node.items.push_back(std::move(key));
-        shadow->Add(Node::Str("MaxCascadeCount"), std::move(keys_node));
-        changed = true;
+    }
+    if (edits.disable_reflections) {
+        changed |= EditKeyframes(*doc, "SSR", "Enabled", TurnOff);
+    } else if (edits.max_reflection_rays > 0) {
+        changed |= EditKeyframes(*doc, "SSR", "RaySamplingCount",
+                                 LowerTo(edits.max_reflection_rays));
+    }
+    if (edits.disable_ambient_occlusion) {
+        changed |= EditKeyframes(*doc, "AO", "SSAO_Enabled", TurnOff);
     }
     if (!changed) {
         return std::nullopt;
     }
     return Serialize(*doc);
+}
+
+std::optional<std::vector<u8>> LimitShadowCascades(std::span<const u8> file, int cascades,
+                                                   bool add_if_missing) {
+    GraphicsSettingsEdits edits;
+    edits.max_shadow_cascades = cascades;
+    edits.add_shadow_cascades = add_if_missing;
+    return EditGraphicsSettings(file, edits);
 }
 
 std::optional<std::vector<u8>> LighterCrowdLod(std::span<const u8> file) {

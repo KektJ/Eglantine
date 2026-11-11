@@ -133,6 +133,10 @@ ENUM(AstcDecodeMode, Cpu, Gpu, CpuAsynchronous);
 ENUM(AstcRecompression, Uncompressed, Bc1, Bc3);
 ENUM(FramePacingMode, Target_Auto, Target_30, Target_60, Target_90, Target_120);
 ENUM(TextureArrayLimit, Limit_1024, Limit_256, Limit_128, Limit_64);
+
+// Fire Emblem: Fortune's Weave's screen-space reflections: as the game sets them (32 rays), 8 rays,
+// or off.
+ENUM(FortunesWeaveReflections, Full, Reduced, Off);
 ENUM(FramesAheadMode, Auto, ThisFrame, PreviousFrame, Relaxed);
 ENUM(VSyncMode, Immediate, Mailbox, Fifo, FifoRelaxed);
 ENUM(VramUsageMode, Conservative, Aggressive);

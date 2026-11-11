@@ -646,20 +646,21 @@ bool Contains(const std::vector<u8>& data, std::string_view text) {
     return std::search(data.begin(), data.end(), text.begin(), text.end()) != data.end();
 }
 
-/// Every .set file below `dir` that sets SceneShadow (path relative to the RomFS root).
-void CollectShadowSettings(const VirtualDir& dir, const std::string& path,
-                           std::vector<std::pair<std::string, std::vector<u8>>>& out) {
+/// Every .set file below `dir` that mentions one of `markers` (path relative to the RomFS root).
+void CollectSettingsFiles(const VirtualDir& dir, const std::string& path,
+                          std::span<const std::string_view> markers,
+                          std::vector<std::pair<std::string, std::vector<u8>>>& out) {
     for (const auto& file : dir->GetFiles()) {
         const auto& name = file->GetName();
         if (name.size() > 4 && name.ends_with(".set")) {
             auto data = file->ReadAllBytes();
-            if (Contains(data, "SceneShadow")) {
+            if (std::ranges::any_of(markers, [&](std::string_view m) { return Contains(data, m); })) {
                 out.emplace_back(path + name, std::move(data));
             }
         }
     }
     for (const auto& sub : dir->GetSubdirectories()) {
-        CollectShadowSettings(sub, path + sub->GetName() + "/", out);
+        CollectSettingsFiles(sub, path + sub->GetName() + "/", markers, out);
     }
 }
 
@@ -668,7 +669,16 @@ void CollectShadowSettings(const VirtualDir& dir, const std::string& path,
 void PatchManager::ApplyFortunesWeaveDataPatches(VirtualFile& romfs) const {
     const bool cascades = Settings::values.fortunes_weave_fewer_shadow_cascades.GetValue();
     const bool crowd_lod = Settings::values.fortunes_weave_crowd_lod.GetValue();
-    if ((!cascades && !crowd_lod) || romfs == nullptr) {
+    const auto reflections = Settings::values.fortunes_weave_reflections.GetValue();
+    const bool ambient_occlusion = Settings::values.fortunes_weave_ambient_occlusion.GetValue();
+    FortunesWeave::GraphicsSettingsEdits edits;
+    edits.max_shadow_cascades = cascades ? 2 : 0;
+    edits.max_reflection_rays = reflections == Settings::FortunesWeaveReflections::Reduced ? 8 : 0;
+    edits.disable_reflections = reflections == Settings::FortunesWeaveReflections::Off;
+    edits.disable_ambient_occlusion = !ambient_occlusion;
+    const bool edit_settings = cascades || reflections != Settings::FortunesWeaveReflections::Full ||
+                               !ambient_occlusion;
+    if ((!edit_settings && !crowd_lod) || romfs == nullptr) {
         return;
     }
     auto extracted = ExtractRomFS(romfs);
@@ -676,22 +686,32 @@ void PatchManager::ApplyFortunesWeaveDataPatches(VirtualFile& romfs) const {
         return;
     }
     Overlay overlay;
-    int shadow_files = 0;
+    int settings_files = 0;
     bool lod = false;
-    if (cascades) {
+    if (edit_settings) {
         constexpr std::string_view Root = "Graphics/Settings/";
         constexpr std::string_view Base = "Graphics/Settings/Preset/Base.set";
+        // Only files that set something an enabled edit changes are parsed (Base.set takes the
+        // cascade count even where it doesn't set one).
+        std::vector<std::string_view> markers;
+        if (cascades) {
+            markers.push_back("SceneShadow");
+        }
+        if (edits.disable_reflections || edits.max_reflection_rays > 0) {
+            markers.push_back("SSR");
+        }
+        if (edits.disable_ambient_occlusion) {
+            markers.push_back("SSAO_Enabled");
+        }
         if (const auto settings = extracted->GetDirectoryRelative(std::string{Root})) {
             std::vector<std::pair<std::string, std::vector<u8>>> files;
-            CollectShadowSettings(settings, std::string{Root}, files);
+            CollectSettingsFiles(settings, std::string{Root}, markers, files);
             for (auto& [path, data] : files) {
-                const bool base = path == Base;
-                if (!base && !Contains(data, "MaxCascadeCount")) {
-                    continue;
-                }
-                if (auto edited = FortunesWeave::LimitShadowCascades(data, 2, base)) {
+                FortunesWeave::GraphicsSettingsEdits file_edits = edits;
+                file_edits.add_shadow_cascades = cascades && path == Base;
+                if (auto edited = FortunesWeave::EditGraphicsSettings(data, file_edits)) {
                     overlay.Add(path, std::move(*edited));
-                    ++shadow_files;
+                    ++settings_files;
                 }
             }
         }
@@ -705,7 +725,7 @@ void PatchManager::ApplyFortunesWeaveDataPatches(VirtualFile& romfs) const {
             }
         }
     }
-    if (shadow_files == 0 && !lod) {
+    if (settings_files == 0 && !lod) {
         LOG_WARNING(Loader,
                     "Fire Emblem: Fortune's Weave: no settings file matched the data patches");
         return;
@@ -717,9 +737,11 @@ void PatchManager::ApplyFortunesWeaveDataPatches(VirtualFile& romfs) const {
     }
     romfs = std::move(packed);
     LOG_INFO(Loader,
-             "Fire Emblem: Fortune's Weave: 2 shadow cascades in {} settings files, lighter "
-             "crowds {}",
-             shadow_files, lod ? "on" : "off");
+             "Fire Emblem: Fortune's Weave: {} graphics settings files edited (2 shadow cascades "
+             "{}, reflections {}, ambient occlusion {}), lighter crowds {}",
+             settings_files, cascades ? "on" : "off",
+             edits.disable_reflections ? "off" : edits.max_reflection_rays > 0 ? "8 rays" : "full",
+             ambient_occlusion ? "on" : "off", lod ? "on" : "off");
 }
 
 VirtualFile PatchManager::PatchRomFS(const NCA* base_nca, VirtualFile base_romfs,
